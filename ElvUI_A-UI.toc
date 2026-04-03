@@ -1,0 +1,33 @@
+## Interface: 120001
+## Title: |cff1784d1ElvUI|r |cff00ffd2A-UI|r
+## Notes: Sammlung von Anpassungen für das ElvUI Midnight Interface.
+## Version: 1.0.1
+## RequiredDeps: ElvUI
+## Author: Ahrok
+## DefaultState: enabled
+## SavedVariables: ElvUI_AUIDB
+## X-Interface: 120001
+## X-ElvUI: 15.10
+## AddonCompartmentFunc: ElvUI_AUI_CompartmentClick
+## IconTexture: Interface\AddOns\ElvUI_A-UI\media\A-UI.tga
+
+#Locales 
+locales\enUS.lua
+locales\deDE.lua
+
+#Core 
+Core.lua
+Icons.lua
+Features.lua
+
+#modules
+modules\install.lua
+modules\microbar.lua
+modules\tooltips.lua
+modules\datatext.lua
+modules\changelog.lua
+modules\info.lua
+modules\map.lua
+modules\teleporter.lua
+modules\delves.lua
+modules\coloring.lua
