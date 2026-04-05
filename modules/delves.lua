@@ -12,16 +12,16 @@ local DEBUG_MODE = false
 -- 1. DIE MASTER-LISTE DER MIDNIGHT TIEFEN
 -- =====================================================================
 AUI.DelveMasterList = {
-    { locName = "Akademischer Aufruhr", name = "Collegiate Calamity", zoneMapID = 2393, internalMapID = 2547, extraMapIDs = {2577, 2578}, widgetSetID = 1611 },
-    { locName = "Die Grollgrube", name = "The Grudge Pit", zoneMapID = 2413, internalMapID = 2510, widgetSetID = 1738 },
-    { locName = "Sonnentötersanktum", name = "Sunkiller Sanctum", zoneMapID = 2405, internalMapID = 2528, widgetSetID = 1800 },
-    { locName = "Schattenwachtspitze", name = "Shadowguard Point", zoneMapID = 2405, internalMapID = 2506, widgetSetID = 1801 },
-    { locName = "Atal'Aman", name = "Atal'Aman", zoneMapID = 2437, internalMapID = 2536, widgetSetID = 1802 },
-    { locName = "Die Kluft der Erinnerung", name = "The Gulf of Memory", zoneMapID = 2413, internalMapID = 2505, widgetSetID = 1803 },
-    { locName = "Die Schattenenklave", name = "The Shadow Enclave", zoneMapID = 2395, internalMapID = 2502, widgetSetID = 1804 },
-    { locName = "Gruften der Zwielichtklinge", name = "Twilight Crypts", zoneMapID = 2437, internalMapID = 2503, widgetSetID = 1805 },
-    { locName = "Der Düsterweg", name = "The Darkway", zoneMapID = 2393, internalMapID = 2525, widgetSetID = 1806 },
-    { locName = "Parhelion Plaza", name = "Parhelion Plaza", zoneMapID = 2569, internalMapID = 2545, widgetSetID = 1799 }
+    { locName = "Akademischer Aufruhr", altName = "akademisch", name = "Collegiate Calamity", zoneMapID = 2393, internalMapID = 2547, extraMapIDs = {2577, 2578}, widgetSetID = 1611 },
+    { locName = "Die Grollgrube", altName = "grollgrube", name = "The Grudge Pit", zoneMapID = 2413, internalMapID = 2510, widgetSetID = 1738 },
+    { locName = "Sonnentötersanktum", altName = "sonnentöter", name = "Sunkiller Sanctum", zoneMapID = 2405, internalMapID = 2528, extraMapIDs = {2527, 2529}, widgetSetID = 1800 },
+    { locName = "Schattenwachtspitze", altName = "schattenwacht", name = "Shadowguard Point", zoneMapID = 2405, internalMapID = 2506, widgetSetID = 1801 },
+    { locName = "Atal'Aman", altName = "atal'aman", name = "Atal'Aman", zoneMapID = 2437, internalMapID = 2535, widgetSetID = 1802 },
+    { locName = "Die Kluft der Erinnerung", altName = "kluft", name = "The Gulf of Memory", zoneMapID = 2413, internalMapID = 2505, widgetSetID = 1803 },
+    { locName = "Die Schattenenklave", altName = "schattenenklave", name = "The Shadow Enclave", zoneMapID = 2395, internalMapID = 2502, widgetSetID = 1804 },
+    { locName = "Gruften der Zwielichtklinge", altName = "zwielichtklinge", name = "Twilight Crypts", zoneMapID = 2437, internalMapID = 2503, widgetSetID = 1805 },
+    { locName = "Der Düsterweg", altName = "düsterweg", name = "The Darkway", zoneMapID = 2393, internalMapID = 2525, widgetSetID = 1806 },
+    { locName = "Parhelion Plaza", altName = "parhelion", name = "Parhelion Plaza", zoneMapID = 2569, internalMapID = 2545, widgetSetID = 1799 }
 }
 
 -- Status "isCompleted" verhindert Endlos-Neustarts am Ende
@@ -32,6 +32,7 @@ local fallbackTimer = 0
 local PendingPin = nil
 local lastTooltipName = ""
 local ActiveMapLookup = nil
+AUI.CurrentTab = "STATS"
 
 local function BuildMapToDelve()
     local lookup = {}
@@ -71,6 +72,15 @@ function AUI:InitDelveDatabase()
     DB.Delves.StoryCache = DB.Delves.StoryCache or {} 
     
     if DB.Delves.DiscoveredMaps then DB.Delves.DiscoveredMaps = nil end
+    
+    -- Charakterspezifische Datenbank
+    DB.Delves.Characters = DB.Delves.Characters or {}
+    local charKey = UnitName("player") .. "-" .. GetRealmName()
+    DB.Delves.Characters[charKey] = DB.Delves.Characters[charKey] or {
+        TotalRuns = DB.Delves.RunsPerCharacter[charKey] or 0, 
+        TotalFails = 0, TotalDeaths = 0, TotalCurios = 0, TotalBanners = 0,
+        LastPlayed = "-", DelveDetails = {}, BestTimes = {}
+    }
     
     AUI.DelveDB = DB.Delves
 end
@@ -116,7 +126,7 @@ local function ValidateAndLearnMap(mapID, d, isScenarioConfirmed)
 end
 
 -- =====================================================================
--- 3. DER TOOLTIP-SPION & DIE "LAUF & LOOT" MAP-PIN LOGIK
+-- 3. DER TOOLTIP-SPION & DIE MAP-PIN LOGIK
 -- =====================================================================
 local function PlaceMapPin(pType, name)
     local mapID = C_Map.GetBestMapForUnit("player")
@@ -169,8 +179,16 @@ local function PlaceMapPin(pType, name)
         if not isDuplicate then
             table.insert(db.MapPins[targetMapID], { x = pos.x, y = pos.y, type = pType, name = name })
             
-            if pType == "Curio" then db.TotalCurios = (db.TotalCurios or 0) + 1
-            elseif pType == "Banner" then db.TotalBanners = (db.TotalBanners or 0) + 1 end
+            local charKey = UnitName("player") .. "-" .. GetRealmName()
+            if not db.Characters[charKey] then db.Characters[charKey] = {} end
+            
+            if pType == "Curio" then 
+                db.TotalCurios = (db.TotalCurios or 0) + 1
+                db.Characters[charKey].TotalCurios = (db.Characters[charKey].TotalCurios or 0) + 1
+            elseif pType == "Banner" then 
+                db.TotalBanners = (db.TotalBanners or 0) + 1 
+                db.Characters[charKey].TotalBanners = (db.Characters[charKey].TotalBanners or 0) + 1
+            end
             
             print("|cff00ffd2A-UI:|r Erfolgreich auf der Karte markiert: " .. name)
             
@@ -188,28 +206,34 @@ GameTooltip:HookScript("OnShow", function(self)
     
     local text = _G[self:GetName().."TextLeft1"]
     if text then
-        local name = text:GetText()
+        local rawName = text:GetText()
+        if not rawName then return end
         
-        -- Sicherheits-Check gegen "Secret Strings" von Blizzard
-        local isSafe = pcall(function() return name == "" end)
+        -- ULTIMATIVER SCHUTZPANZER (PCALL):
+        -- Alles was mit dem String passiert (Umwandlung & Vergleich), passiert hier drin.
+        -- Wenn 'rawName' ein Secret String ist, stirbt der Code genau hier, ABER
+        -- pcall fängt den Fehler auf und setzt isSafe auf false. Keine Lua-Fehler mehr!
+        local isSafe, lowerName = pcall(function()
+            local s = string.lower(tostring(rawName))
+            if s == "" or s == lastTooltipName then return nil end
+            return s
+        end)
         
-        if isSafe and name and type(name) == "string" and name ~= lastTooltipName then
-            lastTooltipName = name
-            local success, lowerName = pcall(string.lower, name)
-            if success and lowerName then
-                local pType = nil
+        -- Wenn wir sicher durchgekommen sind und einen neuen Namen haben:
+        if isSafe and lowerName then
+            lastTooltipName = lowerName
+            local pType = nil
+            
+            if string.find(lowerName, "banner") then pType = "Banner"
+            elseif string.find(lowerName, "kuriosit") or string.find(lowerName, "curio") or string.find(lowerName, "relikt") or string.find(lowerName, "relic") then pType = "Curio"
+            elseif string.find(lowerName, "checkpoint") or string.find(lowerName, "posten") or string.find(lowerName, "wiederbelebung") then pType = "Checkpoint" end
+            
+            if pType then
+                -- Wir speichern das Objekt, machen aber sicherheitshalber noch einen tostring
+                local safeNameStr = "Unbekannt"
+                pcall(function() safeNameStr = tostring(rawName) end)
                 
-                if string.find(lowerName, "banner") then pType = "Banner"
-                elseif string.find(lowerName, "kuriosit") or string.find(lowerName, "curio") then pType = "Curio"
-                elseif string.find(lowerName, "checkpoint") then pType = "Checkpoint" end
-                
-                if pType then
-                    -- Ticket-System ist wieder aktiv: Wir merken uns das Objekt für 5 Minuten!
-                    PendingPin = { type = pType, name = name, time = GetTime() }
-                    if DEBUG_MODE then
-                        print("|cff00ffd2A-UI (Debug):|r " .. name .. " anvisiert! (Wartet auf Interaktion)")
-                    end
-                end
+                PendingPin = { type = pType, name = safeNameStr, time = GetTime() }
             end
         end
     end
@@ -217,9 +241,6 @@ end)
 
 GameTooltip:HookScript("OnHide", function() lastTooltipName = "" end)
 
--- =====================================================================
--- 4. DER EVENT-TRACKER (Optimierte Namens-Erkennung)
--- =====================================================================
 -- =====================================================================
 -- 4. DER EVENT-TRACKER 
 -- =====================================================================
@@ -251,7 +272,6 @@ local function UpdateDelveStatus()
     local isDelveMap = false
     local delveName = ""
 
-    -- 1. Eindeutige Map-ID (100% Trefferquote)
     if mapID then
         if ActiveMapLookup[mapID] then
             isDelveMap = true
@@ -270,26 +290,38 @@ local function UpdateDelveStatus()
         end
     end
     
-    -- 2. Fallback über Szenario-Name
     if inScenario and not isDelveMap then
         local scenName = select(1, C_Scenario.GetInfo())
         if scenName and type(scenName) == "string" then
             local sNameLower = string.lower(scenName)
+            local sNameClean = string.gsub(sNameLower, "[%-%s]", "")
+            
             for _, d in ipairs(AUI.DelveMasterList) do
                 local locStrip = string.gsub(string.lower(d.locName), "^die ", "")
                 locStrip = string.gsub(locStrip, "^der ", "")
                 locStrip = string.gsub(locStrip, "^das ", "")
-                local engStrip = string.gsub(string.lower(d.name), "^the ", "")
+                local locClean = string.gsub(locStrip, "[%-%s]", "")
                 
-                if string.find(sNameLower, locStrip, 1, true) or string.find(sNameLower, engStrip, 1, true) then
+                local engStrip = string.gsub(string.lower(d.name), "^the ", "")
+                local engClean = string.gsub(engStrip, "[%-%s]", "")
+                
+                if string.find(sNameClean, locClean, 1, true) or string.find(sNameClean, engClean, 1, true) or (d.altName and string.find(sNameLower, d.altName, 1, true)) then
                     isDelveMap = true
                     delveName = d.locName
                     
                     if mapID and not BLACKLIST_MAPS[mapID] then
                         if not AUI.DelveDB.DiscoveredMaps then AUI.DelveDB.DiscoveredMaps = {} end
                         if not AUI.DelveDB.DiscoveredMaps[d.locName] then AUI.DelveDB.DiscoveredMaps[d.locName] = {} end
-                        table.insert(AUI.DelveDB.DiscoveredMaps[d.locName], mapID)
-                        ActiveMapLookup[mapID] = d.locName 
+                        
+                        local known = false
+                        for _, v in ipairs(AUI.DelveDB.DiscoveredMaps[d.locName]) do
+                            if v == mapID then known = true; break end
+                        end
+                        if not known then 
+                            table.insert(AUI.DelveDB.DiscoveredMaps[d.locName], mapID)
+                            ActiveMapLookup[mapID] = d.locName 
+                            print("|cff00ffd2A-UI:|r Neue Map-ID (" .. mapID .. ") für " .. d.locName .. " automatisch gelernt!")
+                        end
                     end
                     break
                 end
@@ -310,6 +342,44 @@ local function UpdateDelveStatus()
             fallbackTimer = 0
         end
     else
+        -- FAILS TRACKEN
+        if currentDelve.isActive and currentDelve.started and not currentDelve.isCompleted then
+            if AUI.DelveDB then
+                local charName = UnitName("player") .. "-" .. GetRealmName()
+                AUI.DelveDB.TotalFails = (AUI.DelveDB.TotalFails or 0) + 1
+                
+                if AUI.DelveDB.DelveDetails and AUI.DelveDB.DelveDetails[currentDelve.name] then
+                    AUI.DelveDB.DelveDetails[currentDelve.name].fails = (AUI.DelveDB.DelveDetails[currentDelve.name].fails or 0) + 1
+                    AUI.DelveDB.DelveDetails[currentDelve.name].runs = (AUI.DelveDB.DelveDetails[currentDelve.name].runs or 0) + 1
+                end
+                
+                if AUI.DelveDB.Characters and AUI.DelveDB.Characters[charName] then
+                    local cdb = AUI.DelveDB.Characters[charName]
+                    cdb.TotalFails = (cdb.TotalFails or 0) + 1
+                    cdb.TotalRuns = (cdb.TotalRuns or 0) + 1
+                    cdb.LastPlayed = currentDelve.name .. " (Stufe " .. currentDelve.tier .. ")"
+                    
+                    if not cdb.DelveDetails[currentDelve.name] then cdb.DelveDetails[currentDelve.name] = { runs = 0, success = 0, fails = 0, maxTier = 0 } end
+                    cdb.DelveDetails[currentDelve.name].fails = (cdb.DelveDetails[currentDelve.name].fails or 0) + 1
+                    cdb.DelveDetails[currentDelve.name].runs = (cdb.DelveDetails[currentDelve.name].runs or 0) + 1
+                    
+                    cdb.LastFail = {
+                        delveName = currentDelve.name,
+                        tier = currentDelve.tier,
+                        date = date("%d.%m.%y %H:%M")
+                    }
+                end
+                
+                AUI.DelveDB.LastFail = {
+                    delveName = currentDelve.name,
+                    tier = currentDelve.tier,
+                    date = date("%d.%m.%y %H:%M"),
+                    charName = UnitName("player"),
+                    spec = GetSpecialization() and select(2, GetSpecializationInfo(GetSpecialization())) or "Unbekannt"
+                }
+                print("|cffff0000A-UI:|r Tiefe abgebrochen / fehlgeschlagen.")
+            end
+        end
         currentDelve.isActive = false
         currentDelve.started = false
         currentDelve.isCompleted = false
@@ -318,9 +388,7 @@ local function UpdateDelveStatus()
 end
 
 C_Timer.NewTicker(2.0, function()
-    if not currentDelve.isActive then
-        UpdateDelveStatus()
-    end
+    if not currentDelve.isActive then UpdateDelveStatus() end
     
     if currentDelve.isActive and not currentDelve.started and not currentDelve.isCompleted then
         local stepName = select(1, C_Scenario.GetStepInfo())
@@ -347,50 +415,67 @@ local function OnEvent(self, event, ...)
     if event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED" then
         if event == "PLAYER_ENTERING_WORLD" then AUI:InitDelveDatabase() end
         C_Timer.After(1.0, UpdateDelveStatus)
-        
-    -- INTERAKTIONS-TRIGGERS (Mob-Loot entfernt, nur noch bombensichere Events)
-    elseif event == "GOSSIP_SHOW" or event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" or event == "SCENARIO_CRITERIA_UPDATE" then
-        if currentDelve.isActive and PendingPin then
-            -- Wir geben dir jetzt satte 300 Sekunden (5 Min) Zeit, falls ein Kampf dazwischenkommt!
-            if (GetTime() - PendingPin.time < 300) then 
-                PlaceMapPin(PendingPin.type, PendingPin.name) 
+
+    -- WIEDERBELEBUNGSPOSTEN (Erkennung über Popup-Toast)
+    elseif event == "DISPLAY_EVENT_TOAST_LINK" then
+        if currentDelve.isActive then
+            local message = ...
+            if message then
+                -- Auch hier: Pcall Schutz
+                pcall(function()
+                    local lowMsg = string.lower(tostring(message))
+                    if string.find(lowMsg, "wiederbelebung") or string.find(lowMsg, "checkpoint") or string.find(lowMsg, "posten") then
+                        PlaceMapPin("Checkpoint", "Wiederbelebungspunkt")
+                    end
+                end)
             end
-            PendingPin = nil
+        end
+
+    -- KURIOSITÄTEN (Direkt über Server-Befehl)
+    elseif event == "UNIT_SPELLCAST_SENT" then
+        local unit, targetName, castGUID, spellID = ...
+        if unit == "player" and currentDelve.isActive and targetName then
+            -- PCALL SCHUTZ: Wir kapseln die Textsuche komplett ab
+            pcall(function()
+                local lowTarget = string.lower(tostring(targetName))
+                if string.find(lowTarget, "kuriosit") or string.find(lowTarget, "curio") or string.find(lowTarget, "relikt") or string.find(lowTarget, "relic") then
+                    PlaceMapPin("Curio", tostring(targetName))
+                end
+            end)
         end
         
-    -- ZAUBER-TRIGGERS (Banner, Kuriositäten, Quest-Objekte)
+    -- BANNER & KISTEN-LADEBALKEN
     elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_SUCCEEDED" then
-        local unitTarget, _, spellID = ...
-        if unitTarget == "player" and currentDelve.isActive and PendingPin then
-            if (GetTime() - PendingPin.time < 300) then
+        local unitTarget, castGUID, spellID = ...
+        if unitTarget == "player" and currentDelve.isActive then
+            
+            if spellID == 1269412 then
+                PlaceMapPin("Banner", "Gesegnetes Banner")
+                PendingPin = nil
+                return
+            end
+            
+            if PendingPin and (GetTime() - PendingPin.time < 300) then
                 local sName = nil
-                
-                -- Versuch 1: Echte Spell-ID abrufen
                 if spellID and spellID > 0 then
                     sName = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID))
                     if not sName and GetSpellInfo then sName = GetSpellInfo(spellID) end
                 end
                 
-                -- Versuch 2: Den Text direkt vom Ladebalken ablesen
                 if not sName or sName == "" then
                     sName = (UnitCastInfo and UnitCastInfo("player")) or (UnitCastingInfo and UnitCastingInfo("player")) or (UnitChannelInfo and select(1, UnitChannelInfo("player")))
                 end
                 
                 if sName then
-                    local lowS = string.lower(sName)
-                    local lowPin = string.lower(PendingPin.name)
-                    -- Rigorose Filter für alle denkbaren Blizzard-Interaktionswörter
-                    if string.find(lowS, "öffnen") or string.find(lowS, "open") or string.find(lowS, "plündern") or string.find(lowS, "loot") or string.find(lowS, "entriegeln") or string.find(lowS, "unlock") or string.find(lowS, "untersuchen") or string.find(lowS, "investigate") or string.find(lowS, "befreien") or string.find(lowS, "free") or string.find(lowS, "benutzen") or string.find(lowS, "use") or string.find(lowS, "aktivieren") or string.find(lowS, "activate") or string.find(lowS, "interagieren") or string.find(lowS, "interact") or string.find(lowS, "banner") or string.find(lowPin, lowS) then
-                        PlaceMapPin(PendingPin.type, PendingPin.name)
-                        PendingPin = nil
-                    end
-                else
-                    -- Notfall-Rettung, falls Blizzard uns eine leere Zauber-ID übermittelt
-                    PlaceMapPin(PendingPin.type, PendingPin.name)
-                    PendingPin = nil
+                    -- PCALL SCHUTZ
+                    pcall(function()
+                        local lowS = string.lower(tostring(sName))
+                        if string.find(lowS, "öffnen") or string.find(lowS, "open") or string.find(lowS, "plündern") or string.find(lowS, "loot") or string.find(lowS, "entriegeln") or string.find(lowS, "unlock") or string.find(lowS, "untersuchen") or string.find(lowS, "investigate") or string.find(lowS, "befreien") or string.find(lowS, "free") or string.find(lowS, "benutzen") or string.find(lowS, "use") then
+                            PlaceMapPin(PendingPin.type, PendingPin.name)
+                            PendingPin = nil
+                        end
+                    end)
                 end
-            else
-                PendingPin = nil
             end
         end
         
@@ -398,6 +483,11 @@ local function OnEvent(self, event, ...)
         if currentDelve.isActive and currentDelve.started and not currentDelve.isCompleted and AUI.DelveDB then
             currentDelve.deaths = currentDelve.deaths + 1
             AUI.DelveDB.TotalDeaths = (AUI.DelveDB.TotalDeaths or 0) + 1
+            
+            local charKey = UnitName("player") .. "-" .. GetRealmName()
+            if AUI.DelveDB.Characters and AUI.DelveDB.Characters[charKey] then
+                AUI.DelveDB.Characters[charKey].TotalDeaths = (AUI.DelveDB.Characters[charKey].TotalDeaths or 0) + 1
+            end
         end
         
     elseif event == "SCENARIO_COMPLETED" then
@@ -422,6 +512,22 @@ local function OnEvent(self, event, ...)
             local oldTime = db.BestTimes[currentDelve.name][currentDelve.tier]
             if not oldTime or runTime < oldTime then db.BestTimes[currentDelve.name][currentDelve.tier] = runTime end
             
+            -- Charakter Stats updaten
+            if db.Characters and db.Characters[charName] then
+                local cdb = db.Characters[charName]
+                cdb.TotalRuns = (cdb.TotalRuns or 0) + 1
+                cdb.LastPlayed = currentDelve.name .. " (Stufe " .. currentDelve.tier .. ")"
+                
+                if not cdb.DelveDetails[currentDelve.name] then cdb.DelveDetails[currentDelve.name] = { runs = 0, success = 0, fails = 0, maxTier = 0 } end
+                cdb.DelveDetails[currentDelve.name].runs = cdb.DelveDetails[currentDelve.name].runs + 1
+                cdb.DelveDetails[currentDelve.name].success = cdb.DelveDetails[currentDelve.name].success + 1
+                if currentDelve.tier > (cdb.DelveDetails[currentDelve.name].maxTier or 0) then cdb.DelveDetails[currentDelve.name].maxTier = currentDelve.tier end
+                
+                if not cdb.BestTimes[currentDelve.name] then cdb.BestTimes[currentDelve.name] = {} end
+                local cOldTime = cdb.BestTimes[currentDelve.name][currentDelve.tier]
+                if not cOldTime or runTime < cOldTime then cdb.BestTimes[currentDelve.name][currentDelve.tier] = runTime end
+            end
+            
             local mins = math.floor(runTime / 60)
             local secs = math.floor(runTime % 60)
             print("|cff00ffd2A-UI:|r Tiefe erfolgreich! Zeit: " .. mins .. "m " .. secs .. "s")
@@ -437,9 +543,8 @@ DelveTracker:RegisterEvent("ZONE_CHANGED_INDOORS")
 DelveTracker:RegisterEvent("ZONE_CHANGED")
 DelveTracker:RegisterEvent("PLAYER_DEAD")
 DelveTracker:RegisterEvent("SCENARIO_COMPLETED")
-DelveTracker:RegisterEvent("SCENARIO_CRITERIA_UPDATE")
-DelveTracker:RegisterEvent("GOSSIP_SHOW")
-DelveTracker:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
+DelveTracker:RegisterEvent("DISPLAY_EVENT_TOAST_LINK")
+DelveTracker:RegisterEvent("UNIT_SPELLCAST_SENT")
 DelveTracker:RegisterEvent("UNIT_SPELLCAST_START")
 DelveTracker:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
 DelveTracker:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
@@ -545,9 +650,23 @@ function AUI:ScanLiveDelves()
             AUI.DelveDB.StoryCache[delve.locName] = currentStory
         end
 
+        -- Dynamische Listen-Anzeige je nach ausgewähltem Tab (Account oder Charakter)
+        local isChar = (AUI.CurrentTab == "CHARSTATS")
+        local dStats = nil
+        
+        if isChar then
+            local charKey = UnitName("player") .. "-" .. GetRealmName()
+            if AUI.DelveDB.Characters and AUI.DelveDB.Characters[charKey] and AUI.DelveDB.Characters[charKey].DelveDetails then
+                dStats = AUI.DelveDB.Characters[charKey].DelveDetails[delve.locName]
+            end
+        else
+            if AUI.DelveDB.DelveDetails then
+                dStats = AUI.DelveDB.DelveDetails[delve.locName]
+            end
+        end
+
         local statsText = "Max. Stufe: 0  |  Versuche: 0  |  Erfolge: 0  |  Fails: 0"
-        if AUI.DelveDB and AUI.DelveDB.DelveDetails[delve.locName] then
-            local dStats = AUI.DelveDB.DelveDetails[delve.locName]
+        if dStats then
             statsText = string.format("Max. Stufe: %d  |  Versuche: %d  |  Erfolge: %d  |  Fails: %d", dStats.maxTier or 0, dStats.runs or 0, dStats.success or 0, dStats.fails or 0)
         end
 
@@ -598,14 +717,20 @@ UI.VerticalLine:SetPoint("TOPLEFT", UI, "TOPLEFT", 470, -50)
 UI.VerticalLine:SetTemplate("Default")
 
 UI.TabStats = CreateFrame("Button", nil, UI, "UIPanelButtonTemplate")
-UI.TabStats:SetSize(120, 26)
+UI.TabStats:SetSize(140, 26)
 UI.TabStats:SetPoint("TOPLEFT", UI, "TOPLEFT", 20, -50)
-UI.TabStats:SetText("Statistiken")
+UI.TabStats:SetText("Account")
 E:GetModule("Skins"):HandleButton(UI.TabStats)
 
+UI.TabCharStats = CreateFrame("Button", nil, UI, "UIPanelButtonTemplate")
+UI.TabCharStats:SetSize(140, 26)
+UI.TabCharStats:SetPoint("LEFT", UI.TabStats, "RIGHT", 10, 0)
+UI.TabCharStats:SetText("Charakter")
+E:GetModule("Skins"):HandleButton(UI.TabCharStats)
+
 UI.TabMap = CreateFrame("Button", nil, UI, "UIPanelButtonTemplate")
-UI.TabMap:SetSize(120, 26)
-UI.TabMap:SetPoint("LEFT", UI.TabStats, "RIGHT", 10, 0)
+UI.TabMap:SetSize(140, 26)
+UI.TabMap:SetPoint("LEFT", UI.TabCharStats, "RIGHT", 10, 0)
 UI.TabMap:SetText("Karte")
 E:GetModule("Skins"):HandleButton(UI.TabMap)
 
@@ -613,27 +738,52 @@ UI.StatsContainer = CreateFrame("Frame", nil, UI)
 UI.StatsContainer:SetPoint("TOPLEFT", UI.VerticalLine, "TOPRIGHT", 10, 0)
 UI.StatsContainer:SetPoint("BOTTOMRIGHT", UI, "BOTTOMRIGHT", -20, 20)
 
+UI.CharStatsContainer = CreateFrame("Frame", nil, UI)
+UI.CharStatsContainer:SetPoint("TOPLEFT", UI.VerticalLine, "TOPRIGHT", 10, 0)
+UI.CharStatsContainer:SetPoint("BOTTOMRIGHT", UI, "BOTTOMRIGHT", -20, 20)
+UI.CharStatsContainer:Hide()
+
 UI.MapContainer = CreateFrame("Frame", nil, UI)
 UI.MapContainer:SetPoint("TOPLEFT", UI.VerticalLine, "TOPRIGHT", 10, 0)
 UI.MapContainer:SetPoint("BOTTOMRIGHT", UI, "BOTTOMRIGHT", -20, 20)
 UI.MapContainer:Hide()
 
 local function SetActiveTab(tabName)
+    if AUI.CurrentTab == tabName and UI.StatsContainer:IsShown() then return end
+    AUI.CurrentTab = tabName
+    
+    UI.StatsContainer:Hide()
+    UI.CharStatsContainer:Hide()
+    UI.MapContainer:Hide()
+    UI.TabStats:SetAlpha(0.5)
+    UI.TabCharStats:SetAlpha(0.5)
+    UI.TabMap:SetAlpha(0.5)
+
     if tabName == "STATS" then
-        UI.MapContainer:Hide()
         UI.StatsContainer:Show()
         UI.TabStats:SetAlpha(1)
-        UI.TabMap:SetAlpha(0.5)
-    else
-        UI.StatsContainer:Hide()
+        if UI.JourneyBtn then UI.JourneyBtn:Show() end
+        if UI.CompanionBtn then UI.CompanionBtn:Show() end
+    elseif tabName == "CHARSTATS" then
+        UI.CharStatsContainer:Show()
+        UI.TabCharStats:SetAlpha(1)
+        if UI.JourneyBtn then UI.JourneyBtn:Show() end
+        if UI.CompanionBtn then UI.CompanionBtn:Show() end
+    elseif tabName == "MAP" then
         UI.MapContainer:Show()
         UI.TabMap:SetAlpha(1)
-        UI.TabStats:SetAlpha(0.5)
+        if UI.JourneyBtn then UI.JourneyBtn:Hide() end
+        if UI.CompanionBtn then UI.CompanionBtn:Hide() end
+    end
+    
+    if AUI_DelveInfoFrame and AUI_DelveInfoFrame:IsShown() then
+        AUI:UpdateDelveUI()
     end
 end
+
 UI.TabStats:SetScript("OnClick", function() SetActiveTab("STATS") end)
+UI.TabCharStats:SetScript("OnClick", function() SetActiveTab("CHARSTATS") end)
 UI.TabMap:SetScript("OnClick", function() SetActiveTab("MAP") end)
-SetActiveTab("STATS")
 
 local function CreateDelveLine(parent)
     local row = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -748,8 +898,8 @@ local function CreateStatLine(parent, yOffset, labelText)
     return value
 end
 
+-- ======================= ACCOUNT TAB =======================
 UI.Stats = {}
---UI.MainTitle:SetText("|cff00ff00Allgemeine Daten|r")
 UI.Stats.TotalRuns = CreateStatLine(UI.StatsContainer, -20, "Erfolgreiche Durchläufe (Gesamt):")
 UI.Stats.TotalFails = CreateStatLine(UI.StatsContainer, -45, "Fehlgeschlagene Durchläufe:")
 UI.Stats.TotalDeaths = CreateStatLine(UI.StatsContainer, -70, "Tode in Tiefen (Accountweit):")
@@ -794,8 +944,53 @@ UI.Stats.LastFailDelve = CreateStatLine(UI.StatsContainer, -435, "Tiefe & Stufe:
 UI.Stats.LastFailChar = CreateStatLine(UI.StatsContainer, -460, "Charakter & Spec:")
 UI.Stats.LastFailDate = CreateStatLine(UI.StatsContainer, -485, "Datum:")
 
+
+-- ======================= CHARAKTER TAB =======================
+UI.CharStats = {}
+UI.CharStats.TotalRuns = CreateStatLine(UI.CharStatsContainer, -20, "Erfolgreiche Durchläufe:")
+UI.CharStats.TotalFails = CreateStatLine(UI.CharStatsContainer, -45, "Fehlgeschlagene Durchläufe:")
+UI.CharStats.TotalDeaths = CreateStatLine(UI.CharStatsContainer, -70, "Tode in Tiefen:")
+UI.CharStats.TotalCurios = CreateStatLine(UI.CharStatsContainer, -95, "Gefundene Kuriositäten:")
+UI.CharStats.TotalBanners = CreateStatLine(UI.CharStatsContainer, -120, "Gefundene Banner:")
+
+UI.CharTopLine2 = CreateFrame("Frame", nil, UI.CharStatsContainer, "BackdropTemplate")
+UI.CharTopLine2:SetSize(700, 2)
+UI.CharTopLine2:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -145)
+UI.CharTopLine2:SetTemplate("Default")
+
+UI.CharStats.MostPlayedDelve = CreateStatLine(UI.CharStatsContainer, -165, "Meistgespielte Tiefe:")
+UI.CharStats.HighestTier = CreateStatLine(UI.CharStatsContainer, -190, "Höchste abgeschlossene Stufe:")
+UI.CharStats.LastPlayed = CreateStatLine(UI.CharStatsContainer, -215, "Zuletzt gespielt:")
+
+UI.CharTopLine3 = CreateFrame("Frame", nil, UI.CharStatsContainer, "BackdropTemplate")
+UI.CharTopLine3:SetSize(700, 2)
+UI.CharTopLine3:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -250)
+UI.CharTopLine3:SetTemplate("Default")
+
+UI.CharBestRunTitle = UI.CharStatsContainer:CreateFontString(nil, "OVERLAY")
+UI.CharBestRunTitle:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 16, "NONE")
+UI.CharBestRunTitle:SetPoint("TOP", UI.CharTopLine3, "BOTTOM", 0, -15)
+UI.CharBestRunTitle:SetText("|cff00ff00Persönliche Bestzeit (Charakter)|r")
+
+UI.CharStats.BestDelveName = CreateStatLine(UI.CharStatsContainer, -300, "Tiefe & Stufe:")
+UI.CharStats.BestDelveTime = CreateStatLine(UI.CharStatsContainer, -325, "Zeit:")
+
+UI.CharTopLine4 = CreateFrame("Frame", nil, UI.CharStatsContainer, "BackdropTemplate")
+UI.CharTopLine4:SetSize(700, 2)
+UI.CharTopLine4:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -360)
+UI.CharTopLine4:SetTemplate("Default")
+
+UI.CharFailTitle = UI.CharStatsContainer:CreateFontString(nil, "OVERLAY")
+UI.CharFailTitle:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 16, "NONE")
+UI.CharFailTitle:SetPoint("TOP", UI.CharTopLine4, "BOTTOM", 0, -15)
+UI.CharFailTitle:SetText("|cffff0000Letzter Fehlschlag (Charakter)|r")
+
+UI.CharStats.LastFailDelve = CreateStatLine(UI.CharStatsContainer, -410, "Tiefe & Stufe:")
+UI.CharStats.LastFailDate = CreateStatLine(UI.CharStatsContainer, -435, "Datum:")
+
+
 -- =====================================================================
--- ELVUI-STYLED FORTSCHRITTSBUTTONS
+-- ELVUI-STYLED FORTSCHRITTSBUTTONS (An UI angeheftet)
 -- =====================================================================
 local function CreateElvUIStyledButton(parent, width, height, anchor, pointX, pointY, iconTex, titleText, r, g, b)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -841,8 +1036,8 @@ local function CreateElvUIStyledButton(parent, width, height, anchor, pointX, po
     return btn
 end
 
-UI.JourneyBtn = CreateElvUIStyledButton(UI.StatsContainer, 340, 46, "BOTTOMLEFT", 20, 20, "Interface\\Icons\\INV_Misc_Map_01", "|cffffd100Tiefenreise (Saison 1)|r", 1, 0.6, 0)
-UI.CompanionBtn = CreateElvUIStyledButton(UI.StatsContainer, 340, 46, "BOTTOMRIGHT", -20, 20, "Interface\\Icons\\Achievement_Character_Bloodelf_Female", "|cff00ff00Valeera Sanguinar|r", 0.2, 0.8, 0.2)
+UI.JourneyBtn = CreateElvUIStyledButton(UI, 340, 46, "BOTTOMLEFT", 490, 20, "Interface\\Icons\\INV_Misc_Map_01", "|cffffd100Tiefenreise (Saison 1)|r", 1, 0.6, 0)
+UI.CompanionBtn = CreateElvUIStyledButton(UI, 340, 46, "BOTTOMRIGHT", -20, 20, "Interface\\Icons\\Achievement_Character_Bloodelf_Female", "|cff00ff00Valeera Sanguinar|r", 0.2, 0.8, 0.2)
 
 UI.JourneyBtn:SetScript("OnClick", function()
     if not C_AddOns.IsAddOnLoaded("Blizzard_EncounterJournal") then
@@ -851,7 +1046,6 @@ UI.JourneyBtn:SetScript("OnClick", function()
     if not EncounterJournal or not EncounterJournal:IsShown() then
         ToggleEncounterJournal()
     end
-    -- Öffnet gezielt Tab 1 ("Reisen"), wo die Tiefen zu finden sind
     if EncounterJournal and EncounterJournal_SetTab then
         EncounterJournal_SetTab(EncounterJournal, 1)
     end
@@ -867,6 +1061,7 @@ UI.CompanionBtn:SetScript("OnClick", function()
     end
 end)
 
+SetActiveTab("STATS")
 
 -- =====================================================================
 -- 8. RECHTE SPALTE (TAB 2): DAS KARTEN-PANEL
@@ -1015,8 +1210,8 @@ function AUI:DrawDelveMap(mapID, delveName)
                 pin.Icon:SetTexture("Interface\\Icons\\inv_banner_03")
                 pin.Glow:SetVertexColor(1, 0.8, 0, 0.8) 
             elseif pinData.type == "Checkpoint" then
-                pin.Icon:SetTexture("Interface\\Icons\\poi-graveyard")
-                pin.Glow:SetVertexColor(1, 1, 1, 0.8)
+                pin.Icon:SetTexture("Interface\\Icons\\spell_holy_resurrection")
+                pin.Glow:SetVertexColor(0.2, 0.8, 1, 0.8)
             else
                 pin.Icon:SetTexture("Interface\\Icons\\inv_misc_bag_08") 
                 pin.Glow:SetVertexColor(0, 1, 0.8, 0.8) 
@@ -1187,8 +1382,8 @@ function AUI:UpdateWorldMapPins()
             pin.Icon:SetTexture("Interface\\Icons\\inv_banner_03")
             pin.Glow:SetVertexColor(1, 0.8, 0, 0.8)
         elseif pinData.type == "Checkpoint" then
-            pin.Icon:SetTexture("Interface\\Icons\\poi-graveyard")
-            pin.Glow:SetVertexColor(1, 1, 1, 0.8)
+            pin.Icon:SetTexture("Interface\\Icons\\spell_holy_resurrection")
+            pin.Glow:SetVertexColor(0.2, 0.8, 1, 0.8)
         else
             pin.Icon:SetTexture("Interface\\Icons\\inv_misc_bag_08")
             pin.Glow:SetVertexColor(0, 1, 0.8, 0.8)
@@ -1337,6 +1532,7 @@ function AUI:UpdateDelveUI()
     local db = AUI.DelveDB
     if not db then return end 
 
+    -- ================= ACCOUNT STATS =================
     UI.Stats.TotalRuns:SetText(db.TotalRuns or 0)
     UI.Stats.TotalFails:SetText(db.TotalFails or 0)
     UI.Stats.TotalDeaths:SetText(db.TotalDeaths or 0)
@@ -1368,7 +1564,6 @@ function AUI:UpdateDelveUI()
         UI.Stats.HighestTier:SetText("-")
     end
 
-
     local bestDName, bestDTier, bestDTime = "-", "-", 999999
     for dName, tiers in pairs(db.BestTimes) do
         for tier, time in pairs(tiers) do
@@ -1390,6 +1585,51 @@ function AUI:UpdateDelveUI()
         UI.Stats.LastFailDate:SetText(db.LastFail.date)
     else
         UI.Stats.LastFailDelve:SetText("-"); UI.Stats.LastFailChar:SetText("-"); UI.Stats.LastFailDate:SetText("-")
+    end
+
+    -- ================= CHARAKTER STATS =================
+    local charKey = UnitName("player") .. "-" .. GetRealmName()
+    local cdb = db.Characters and db.Characters[charKey]
+    if cdb then
+        UI.CharStats.TotalRuns:SetText(cdb.TotalRuns or 0)
+        UI.CharStats.TotalFails:SetText(cdb.TotalFails or 0)
+        UI.CharStats.TotalDeaths:SetText(cdb.TotalDeaths or 0)
+        UI.CharStats.TotalCurios:SetText(cdb.TotalCurios or 0)
+        UI.CharStats.TotalBanners:SetText(cdb.TotalBanners or 0)
+        
+        local cTopDelve = "-"
+        local cTopDelveRuns = 0
+        local cMaxTier = 0
+        for dName, data in pairs(cdb.DelveDetails or {}) do
+            if data.runs > cTopDelveRuns then cTopDelveRuns = data.runs; cTopDelve = dName end
+            if (data.maxTier or 0) > cMaxTier then cMaxTier = data.maxTier end
+        end
+        UI.CharStats.MostPlayedDelve:SetText(cTopDelve ~= "-" and (cTopDelve .. " (" .. cTopDelveRuns .. ")") or "-")
+        UI.CharStats.HighestTier:SetText(cMaxTier > 0 and ("Stufe " .. cMaxTier) or "-")
+        UI.CharStats.LastPlayed:SetText(cdb.LastPlayed or "-")
+        
+        local cBestName, cBestTier, cBestTime = "-", "-", 999999
+        for dName, tiers in pairs(cdb.BestTimes or {}) do
+            for tier, time in pairs(tiers) do
+                if time < cBestTime then cBestTime = time; cBestName = dName; cBestTier = tier end
+            end
+        end
+        
+        if cBestTime ~= 999999 then
+            local mins = math.floor(cBestTime / 60); local secs = math.floor(cBestTime % 60)
+            UI.CharStats.BestDelveName:SetText(cBestName .. " (Stufe " .. cBestTier .. ")")
+            UI.CharStats.BestDelveTime:SetText(mins .. "m " .. secs .. "s")
+        else
+            UI.CharStats.BestDelveName:SetText("-"); UI.CharStats.BestDelveTime:SetText("-")
+        end
+        
+        if cdb.LastFail and cdb.LastFail.delveName ~= "Keine" then
+            UI.CharStats.LastFailDelve:SetText(cdb.LastFail.delveName .. " (Stufe " .. cdb.LastFail.tier .. ")")
+            UI.CharStats.LastFailDate:SetText(cdb.LastFail.date)
+        else
+            UI.CharStats.LastFailDelve:SetText("-")
+            UI.CharStats.LastFailDate:SetText("-")
+        end
     end
 
     -- ================================================================
@@ -1548,10 +1788,14 @@ function AUI:UpdateDelveUI()
         end
         if activeMapID then
             AUI:OpenDelveMap(activeMapID, currentDelve.name)
-            SetActiveTab("MAP")
+            if not UI.MapContainer:IsShown() and not UI.StatsContainer:IsShown() and not UI.CharStatsContainer:IsShown() then
+                SetActiveTab("MAP")
+            end
         end
     else
-        SetActiveTab("STATS")
+        if not UI.MapContainer:IsShown() and not UI.StatsContainer:IsShown() and not UI.CharStatsContainer:IsShown() then
+            SetActiveTab("STATS")
+        end
         if not AUI.CurrentMapLoaded then
             local fallbackData = bountifulData[1] or normalData[1]
             if fallbackData then
@@ -1562,11 +1806,19 @@ function AUI:UpdateDelveUI()
     end
 end
 
-E:RegisterChatCommand("delves", function()
+E:RegisterChatCommand("delves", function(msg)
+    if msg == "debug" then
+        local mapID = C_Map.GetBestMapForUnit("player")
+        local inScenario = C_Scenario.IsInScenario()
+        local scenName = inScenario and select(1, C_Scenario.GetInfo()) or "Kein aktives Szenario"
+        print("|cff00ffd2A-UI Debug:|r Map-ID: " .. tostring(mapID) .. " | Szenario: " .. tostring(scenName))
+        return
+    end
+
     if AUI_DelveInfoFrame:IsShown() then
         AUI_DelveInfoFrame:Hide()
     else
         AUI:UpdateDelveUI()
         AUI_DelveInfoFrame:Show()
     end
-end) 
+end)
