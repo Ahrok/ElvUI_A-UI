@@ -19,6 +19,11 @@ local TeleportList = {
             { id = 212337, type = "toy" },   -- Stein des Herds
             { id = 142542, type = "toy" },   -- Foliant des Stadtportals
             { id = 209035, type = "toy" },   -- Ruhestein der Flamme
+            { id = 245970, type = "toy" },   -- Expressruhestein des P.O.S.T.-Meisters
+            { id = 208704, type = "toy" },   -- Irdener Ruherstein des Tiefenbewohners
+            { id = 172179, type = "toy" },   -- Ruhestein des Ewigen Reisenden
+            { id = 210455, type = "toy", races = {"Draenei", "LightforgedDraenei"} },   -- Draenischer Holostein (NUR DRAENEI)
+            { id = 183716, type = "toy" },   -- Venthyrsündenstein
         }
     },
     {
@@ -187,21 +192,37 @@ end
 
 local function ScanTeleports()
     local available = {}
+    local _, playerRace = UnitRace("player") -- Holt das Volk für den Völker-Filter
+    
     for _, category in ipairs(TeleportList) do
         if not category.class or category.class == E.myclass then
             local catData = { name = category.name, icon = category.icon, buttons = {} }
             for _, itemData in ipairs(category.items) do
                 local id = itemData.id
                 
-                if itemData.type == "toy" and PlayerHasToy(id) and C_ToyBox.IsToyUsable(id) then
-                    local name, icon = GetSafeName(id, "toy")
-                    if name then table.insert(catData.buttons, { type = "toy", id = id, name = name, icon = icon }) end
-                elseif itemData.type == "item" and GetItemCount(id) > 0 then
-                    local name, icon = GetSafeName(id, "item")
-                    if name then table.insert(catData.buttons, { type = "item", id = id, name = name, icon = icon }) end
-                elseif itemData.type == "spell" and IsSpellKnown(id) then
-                    local name, icon = GetSafeName(id, "spell")
-                    if name then table.insert(catData.buttons, { type = "spell", id = id, name = name, icon = icon }) end
+                -- VÖLKER CHECK
+                local isRaceAllowed = true
+                if itemData.races then
+                    isRaceAllowed = false
+                    for _, allowedRace in ipairs(itemData.races) do
+                        if allowedRace == playerRace then 
+                            isRaceAllowed = true 
+                            break 
+                        end
+                    end
+                end
+                
+                if isRaceAllowed then
+                    if itemData.type == "toy" and PlayerHasToy(id) and C_ToyBox.IsToyUsable(id) then
+                        local name, icon = GetSafeName(id, "toy")
+                        if name then table.insert(catData.buttons, { type = "toy", id = id, name = name, icon = icon }) end
+                    elseif itemData.type == "item" and GetItemCount(id) > 0 then
+                        local name, icon = GetSafeName(id, "item")
+                        if name then table.insert(catData.buttons, { type = "item", id = id, name = name, icon = icon }) end
+                    elseif itemData.type == "spell" and IsSpellKnown(id) then
+                        local name, icon = GetSafeName(id, "spell")
+                        if name then table.insert(catData.buttons, { type = "spell", id = id, name = name, icon = icon }) end
+                    end
                 end
             end
             if #catData.buttons > 0 then
@@ -420,16 +441,11 @@ function AUI:ToggleTeleportMenu(parentButton)
     else
         AUI:UpdateTeleportMenu() 
         
-        -- DER TRICK GEGEN BLIZZARDS TAINT-SYSTEM:
-        -- Wir verstecken den Tooltip einfach, sobald das Menü aufgeht.
-        -- So gibt es absolut keine Überlappung mehr!
         if GameTooltip:IsShown() then
             GameTooltip:Hide()
         end
 
         AUI_TeleportMenuFrame:ClearAllPoints()
-        -- Da der Tooltip jetzt weg ist, können wir das Menü wunderschön nah 
-        -- (nur 2 Pixel Abstand) an den Button andocken!
         AUI_TeleportMenuFrame:SetPoint("BOTTOM", parentButton, "TOPRIGHT", 2, 0)
         AUI_TeleportMenuFrame:Show()
     end
@@ -483,28 +499,43 @@ if AUI.ShowMicroButtonTooltip then
             local cooldowns = {}
             local activeCDs = {} 
             local currentTime = GetTime()
+            local _, playerRace = UnitRace("player") -- Völkercheck für den Tooltip
 
             for _, category in ipairs(TeleportList) do
                 if not category.class or category.class == E.myclass then
                     for _, itemData in ipairs(category.items) do
                         
-                        local owns = false
-                        if itemData.type == "toy" and PlayerHasToy(itemData.id) and C_ToyBox.IsToyUsable(itemData.id) then owns = true
-                        elseif itemData.type == "item" and GetItemCount(itemData.id) > 0 then owns = true
-                        elseif itemData.type == "spell" and IsSpellKnown(itemData.id) then owns = true end
+                        -- VÖLKER CHECK
+                        local isRaceAllowed = true
+                        if itemData.races then
+                            isRaceAllowed = false
+                            for _, allowedRace in ipairs(itemData.races) do
+                                if allowedRace == playerRace then 
+                                    isRaceAllowed = true 
+                                    break 
+                                end
+                            end
+                        end
                         
-                        if owns then
-                            local start, duration = GetSafeCooldown(itemData.id, itemData.type)
+                        if isRaceAllowed then
+                            local owns = false
+                            if itemData.type == "toy" and PlayerHasToy(itemData.id) and C_ToyBox.IsToyUsable(itemData.id) then owns = true
+                            elseif itemData.type == "item" and GetItemCount(itemData.id) > 0 then owns = true
+                            elseif itemData.type == "spell" and IsSpellKnown(itemData.id) then owns = true end
                             
-                            if start and start > 0 and duration > 1.5 then
-                                local remaining = (start + duration) - currentTime
-                                if remaining > 0 then
-                                    local name = GetSafeName(itemData.id, itemData.type)
-                                    if name then
-                                        local endTime = math.floor(start + duration)
-                                        if not activeCDs[endTime] then
-                                            activeCDs[endTime] = true
-                                            table.insert(cooldowns, { name = name, remaining = remaining })
+                            if owns then
+                                local start, duration = GetSafeCooldown(itemData.id, itemData.type)
+                                
+                                if start and start > 0 and duration > 1.5 then
+                                    local remaining = (start + duration) - currentTime
+                                    if remaining > 0 then
+                                        local name = GetSafeName(itemData.id, itemData.type)
+                                        if name then
+                                            local endTime = math.floor(start + duration)
+                                            if not activeCDs[endTime] then
+                                                activeCDs[endTime] = true
+                                                table.insert(cooldowns, { name = name, remaining = remaining })
+                                            end
                                         end
                                     end
                                 end
