@@ -30,7 +30,6 @@ local fallbackTimer = 0
 
 -- Ticket-System für das Looten
 local PendingPin = nil
-local lastTooltipName = ""
 local ActiveMapLookup = nil
 AUI.CurrentTab = "STATS"
 
@@ -48,7 +47,7 @@ local function BuildMapToDelve()
 end
 
 -- =====================================================================
--- 2. DATENBANK INITIALISIEREN
+-- 2. DATENBANK INITIALISIEREN & AUTO-CLEANUP
 -- =====================================================================
 function AUI:InitDelveDatabase()
     if not _G["ElvUI_AUIDB"] then _G["ElvUI_AUIDB"] = {} end
@@ -71,6 +70,7 @@ function AUI:InitDelveDatabase()
     DB.Delves.MapPins = DB.Delves.MapPins or {}
     DB.Delves.StoryCache = DB.Delves.StoryCache or {} 
     
+    -- Wir löschen die korrupte Map-Datenbank, damit der LFR-Raid vergessen wird!
     if DB.Delves.DiscoveredMaps then DB.Delves.DiscoveredMaps = nil end
     
     -- Charakterspezifische Datenbank
@@ -81,6 +81,27 @@ function AUI:InitDelveDatabase()
         TotalFails = 0, TotalDeaths = 0, TotalCurios = 0, TotalBanners = 0,
         LastPlayed = "-", DelveDetails = {}, BestTimes = {}
     }
+    
+    -- !!! AUTO-CLEANUP: Entfernt den falschen "Sonnentötersanktum (Stufe 1)" LFR-Fail !!!
+    if DB.Delves.LastFail and DB.Delves.LastFail.delveName == "Sonnentötersanktum" and DB.Delves.LastFail.tier == 1 then
+        DB.Delves.TotalFails = math.max(0, (DB.Delves.TotalFails or 1) - 1)
+        if DB.Delves.DelveDetails["Sonnentötersanktum"] then
+            DB.Delves.DelveDetails["Sonnentötersanktum"].fails = math.max(0, (DB.Delves.DelveDetails["Sonnentötersanktum"].fails or 1) - 1)
+            DB.Delves.DelveDetails["Sonnentötersanktum"].runs = math.max(0, (DB.Delves.DelveDetails["Sonnentötersanktum"].runs or 1) - 1)
+        end
+        if DB.Delves.Characters[charKey] then
+            local cdb = DB.Delves.Characters[charKey]
+            cdb.TotalFails = math.max(0, (cdb.TotalFails or 1) - 1)
+            cdb.TotalRuns = math.max(0, (cdb.TotalRuns or 1) - 1)
+            if cdb.DelveDetails["Sonnentötersanktum"] then
+                cdb.DelveDetails["Sonnentötersanktum"].fails = math.max(0, (cdb.DelveDetails["Sonnentötersanktum"].fails or 1) - 1)
+                cdb.DelveDetails["Sonnentötersanktum"].runs = math.max(0, (cdb.DelveDetails["Sonnentötersanktum"].runs or 1) - 1)
+            end
+            cdb.LastFail = { delveName = "Keine", tier = 0, date = "-", charName = "-", spec = "-" }
+        end
+        DB.Delves.LastFail = { delveName = "Keine", tier = 0, date = "-", charName = "-", spec = "-" }
+        print("|cff00ffd2A-UI:|r Falscher LFR-Fehlschlag wurde erfolgreich gelöscht.")
+    end
     
     AUI.DelveDB = DB.Delves
 end
@@ -126,7 +147,7 @@ local function ValidateAndLearnMap(mapID, d, isScenarioConfirmed)
 end
 
 -- =====================================================================
--- 3. DER TOOLTIP-SPION & DIE MAP-PIN LOGIK
+-- 3. MAP-PIN LOGIK
 -- =====================================================================
 local function PlaceMapPin(pType, name)
     local mapID = C_Map.GetBestMapForUnit("player")
@@ -145,8 +166,7 @@ local function PlaceMapPin(pType, name)
 
     for _, d in ipairs(AUI.DelveMasterList) do
         if d.locName == currentDelve.name then
-            if ValidateAndLearnMap(mapID, d, true) then targetMapID = mapID end
-            
+            targetMapID = mapID
             if not targetMapID then
                 pos = C_Map.GetPlayerMapPosition(d.internalMapID, "player")
                 if pos then 
@@ -201,46 +221,6 @@ local function PlaceMapPin(pType, name)
     end
 end
 
-GameTooltip:HookScript("OnShow", function(self)
-    if not currentDelve.isActive then return end
-    
-    local text = _G[self:GetName().."TextLeft1"]
-    if text then
-        local rawName = text:GetText()
-        if not rawName then return end
-        
-        -- ULTIMATIVER SCHUTZPANZER (PCALL):
-        -- Alles was mit dem String passiert (Umwandlung & Vergleich), passiert hier drin.
-        -- Wenn 'rawName' ein Secret String ist, stirbt der Code genau hier, ABER
-        -- pcall fängt den Fehler auf und setzt isSafe auf false. Keine Lua-Fehler mehr!
-        local isSafe, lowerName = pcall(function()
-            local s = string.lower(tostring(rawName))
-            if s == "" or s == lastTooltipName then return nil end
-            return s
-        end)
-        
-        -- Wenn wir sicher durchgekommen sind und einen neuen Namen haben:
-        if isSafe and lowerName then
-            lastTooltipName = lowerName
-            local pType = nil
-            
-            if string.find(lowerName, "banner") then pType = "Banner"
-            elseif string.find(lowerName, "kuriosit") or string.find(lowerName, "curio") or string.find(lowerName, "relikt") or string.find(lowerName, "relic") then pType = "Curio"
-            elseif string.find(lowerName, "checkpoint") or string.find(lowerName, "posten") or string.find(lowerName, "wiederbelebung") then pType = "Checkpoint" end
-            
-            if pType then
-                -- Wir speichern das Objekt, machen aber sicherheitshalber noch einen tostring
-                local safeNameStr = "Unbekannt"
-                pcall(function() safeNameStr = tostring(rawName) end)
-                
-                PendingPin = { type = pType, name = safeNameStr, time = GetTime() }
-            end
-        end
-    end
-end)
-
-GameTooltip:HookScript("OnHide", function() lastTooltipName = "" end)
-
 -- =====================================================================
 -- 4. DER EVENT-TRACKER 
 -- =====================================================================
@@ -272,58 +252,40 @@ local function UpdateDelveStatus()
     local isDelveMap = false
     local delveName = ""
 
-    if mapID then
-        if ActiveMapLookup[mapID] then
-            isDelveMap = true
-            delveName = ActiveMapLookup[mapID]
-        elseif AUI.DelveDB and AUI.DelveDB.DiscoveredMaps then
-            for dName, mapList in pairs(AUI.DelveDB.DiscoveredMaps) do
-                for _, mID in ipairs(mapList) do
-                    if mID == mapID then
-                        isDelveMap = true
-                        delveName = dName
-                        break
-                    end
-                end
-                if isDelveMap then break end
-            end
-        end
+    -- 1. Eindeutige Map-ID prüfen
+    if mapID and ActiveMapLookup[mapID] then
+        isDelveMap = true
+        delveName = ActiveMapLookup[mapID]
     end
     
-    if inScenario and not isDelveMap then
-        local scenName = select(1, C_Scenario.GetInfo())
-        if scenName and type(scenName) == "string" then
-            local sNameLower = string.lower(scenName)
-            local sNameClean = string.gsub(sNameLower, "[%-%s]", "")
-            
-            for _, d in ipairs(AUI.DelveMasterList) do
-                local locStrip = string.gsub(string.lower(d.locName), "^die ", "")
-                locStrip = string.gsub(locStrip, "^der ", "")
-                locStrip = string.gsub(locStrip, "^das ", "")
-                local locClean = string.gsub(locStrip, "[%-%s]", "")
+    -- 2. Fallback über Szenario (ABER NUR, wenn es GANZ SICHER eine Tiefe ist -> FindDelveTier!)
+    if not isDelveMap and inScenario then
+        local t = FindDelveTier()
+        if t then -- Absoluter Schutz: Nur wenn das offizielle Tiefen-Widget geladen ist!
+            local scenName = select(1, C_Scenario.GetInfo())
+            if scenName and type(scenName) == "string" then
+                local sNameLower = string.lower(scenName)
+                local sNameClean = string.gsub(sNameLower, "[%-%s]", "")
                 
-                local engStrip = string.gsub(string.lower(d.name), "^the ", "")
-                local engClean = string.gsub(engStrip, "[%-%s]", "")
-                
-                if string.find(sNameClean, locClean, 1, true) or string.find(sNameClean, engClean, 1, true) or (d.altName and string.find(sNameLower, d.altName, 1, true)) then
-                    isDelveMap = true
-                    delveName = d.locName
+                for _, d in ipairs(AUI.DelveMasterList) do
+                    local locStrip = string.gsub(string.lower(d.locName), "^die ", "")
+                    locStrip = string.gsub(locStrip, "^der ", "")
+                    locStrip = string.gsub(locStrip, "^das ", "")
+                    local locClean = string.gsub(locStrip, "[%-%s]", "")
                     
-                    if mapID and not BLACKLIST_MAPS[mapID] then
-                        if not AUI.DelveDB.DiscoveredMaps then AUI.DelveDB.DiscoveredMaps = {} end
-                        if not AUI.DelveDB.DiscoveredMaps[d.locName] then AUI.DelveDB.DiscoveredMaps[d.locName] = {} end
+                    local engStrip = string.gsub(string.lower(d.name), "^the ", "")
+                    local engClean = string.gsub(engStrip, "[%-%s]", "")
+                    
+                    if string.find(sNameClean, locClean, 1, true) or string.find(sNameClean, engClean, 1, true) or (d.altName and string.find(sNameLower, d.altName, 1, true)) then
+                        isDelveMap = true
+                        delveName = d.locName
                         
-                        local known = false
-                        for _, v in ipairs(AUI.DelveDB.DiscoveredMaps[d.locName]) do
-                            if v == mapID then known = true; break end
+                        -- Dynamisches Lernen für diese Sitzung
+                        if mapID and not BLACKLIST_MAPS[mapID] then
+                            ActiveMapLookup[mapID] = d.locName
                         end
-                        if not known then 
-                            table.insert(AUI.DelveDB.DiscoveredMaps[d.locName], mapID)
-                            ActiveMapLookup[mapID] = d.locName 
-                            print("|cff00ffd2A-UI:|r Neue Map-ID (" .. mapID .. ") für " .. d.locName .. " automatisch gelernt!")
-                        end
+                        break
                     end
-                    break
                 end
             end
         end
@@ -342,7 +304,7 @@ local function UpdateDelveStatus()
             fallbackTimer = 0
         end
     else
-        -- FAILS TRACKEN
+        -- FAILS TRACKEN (Wenn man die Tiefe verlässt, ohne sie abzuschließen)
         if currentDelve.isActive and currentDelve.started and not currentDelve.isCompleted then
             if AUI.DelveDB then
                 local charName = UnitName("player") .. "-" .. GetRealmName()
@@ -421,7 +383,6 @@ local function OnEvent(self, event, ...)
         if currentDelve.isActive then
             local message = ...
             if message then
-                -- Auch hier: Pcall Schutz
                 pcall(function()
                     local lowMsg = string.lower(tostring(message))
                     if string.find(lowMsg, "wiederbelebung") or string.find(lowMsg, "checkpoint") or string.find(lowMsg, "posten") then
@@ -435,7 +396,6 @@ local function OnEvent(self, event, ...)
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, targetName, castGUID, spellID = ...
         if unit == "player" and currentDelve.isActive and targetName then
-            -- PCALL SCHUTZ: Wir kapseln die Textsuche komplett ab
             pcall(function()
                 local lowTarget = string.lower(tostring(targetName))
                 if string.find(lowTarget, "kuriosit") or string.find(lowTarget, "curio") or string.find(lowTarget, "relikt") or string.find(lowTarget, "relic") then
@@ -467,7 +427,6 @@ local function OnEvent(self, event, ...)
                 end
                 
                 if sName then
-                    -- PCALL SCHUTZ
                     pcall(function()
                         local lowS = string.lower(tostring(sName))
                         if string.find(lowS, "öffnen") or string.find(lowS, "open") or string.find(lowS, "plündern") or string.find(lowS, "loot") or string.find(lowS, "entriegeln") or string.find(lowS, "unlock") or string.find(lowS, "untersuchen") or string.find(lowS, "investigate") or string.find(lowS, "befreien") or string.find(lowS, "free") or string.find(lowS, "benutzen") or string.find(lowS, "use") then
@@ -650,7 +609,6 @@ function AUI:ScanLiveDelves()
             AUI.DelveDB.StoryCache[delve.locName] = currentStory
         end
 
-        -- Dynamische Listen-Anzeige je nach ausgewähltem Tab (Account oder Charakter)
         local isChar = (AUI.CurrentTab == "CHARSTATS")
         local dStats = nil
         
@@ -990,7 +948,7 @@ UI.CharStats.LastFailDate = CreateStatLine(UI.CharStatsContainer, -435, "Datum:"
 
 
 -- =====================================================================
--- ELVUI-STYLED FORTSCHRITTSBUTTONS (An UI angeheftet)
+-- ELVUI-STYLED FORTSCHRITTSBUTTONS
 -- =====================================================================
 local function CreateElvUIStyledButton(parent, width, height, anchor, pointX, pointY, iconTex, titleText, r, g, b)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")

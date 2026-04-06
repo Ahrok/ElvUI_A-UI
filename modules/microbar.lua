@@ -131,6 +131,12 @@ local function GetStyleColor(prefix, typeStr)
 end
 
 function AUI:UpdateMicrobar()
+    -- NEU: Kampf-Sperre! Wenn wir im Kampf sind, wird das Ausblenden blockiert.
+    if InCombatLockdown() then
+        AUI.MicrobarNeedsUpdate = true
+        return
+    end
+
     local db = E.db.AUI.microbar
     local bar = _G["AUI_Microbar"]
     if not bar then return end
@@ -230,6 +236,18 @@ function AUI:UpdateMicrobar()
         end
     end
 end
+
+-- NEU: Holt das Update nach dem Kampf nach
+local CombatCatch = CreateFrame("Frame")
+CombatCatch:RegisterEvent("PLAYER_REGEN_ENABLED")
+CombatCatch:SetScript("OnEvent", function()
+    if AUI.MicrobarNeedsUpdate then
+        AUI.MicrobarNeedsUpdate = false
+        if AUI.UpdateMicrobar then 
+            AUI:UpdateMicrobar() 
+        end
+    end
+end)
 
 -- Update-Helfer für Post-Status
 function AUI:UpdateMailState()
