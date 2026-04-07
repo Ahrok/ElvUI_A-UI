@@ -63,6 +63,7 @@ function AUI:InitDelveDatabase()
     DB.Delves.RunsPerTier = DB.Delves.RunsPerTier or {}
     DB.Delves.DelveDetails = DB.Delves.DelveDetails or {}
     DB.Delves.RunsPerSpec = DB.Delves.RunsPerSpec or {}
+    DB.Delves.RunsPerRole = DB.Delves.RunsPerRole or {}
     DB.Delves.RunsPerCharacter = DB.Delves.RunsPerCharacter or {}
     DB.Delves.BestTimes = DB.Delves.BestTimes or {}
     DB.Delves.LastFail = DB.Delves.LastFail or { delveName = "Keine", tier = 0, date = "-", charName = "-", spec = "-" }
@@ -70,7 +71,6 @@ function AUI:InitDelveDatabase()
     DB.Delves.MapPins = DB.Delves.MapPins or {}
     DB.Delves.StoryCache = DB.Delves.StoryCache or {} 
     
-    -- Wir löschen die korrupte Map-Datenbank, damit der LFR-Raid vergessen wird!
     if DB.Delves.DiscoveredMaps then DB.Delves.DiscoveredMaps = nil end
     
     -- Charakterspezifische Datenbank
@@ -79,10 +79,11 @@ function AUI:InitDelveDatabase()
     DB.Delves.Characters[charKey] = DB.Delves.Characters[charKey] or {
         TotalRuns = DB.Delves.RunsPerCharacter[charKey] or 0, 
         TotalFails = 0, TotalDeaths = 0, TotalCurios = 0, TotalBanners = 0,
+        RunsPerSpec = {}, RunsPerRole = {},
         LastPlayed = "-", DelveDetails = {}, BestTimes = {}
     }
     
-    -- !!! AUTO-CLEANUP: Entfernt den falschen "Sonnentötersanktum (Stufe 1)" LFR-Fail !!!
+    -- AUTO-CLEANUP
     if DB.Delves.LastFail and DB.Delves.LastFail.delveName == "Sonnentötersanktum" and DB.Delves.LastFail.tier == 1 then
         DB.Delves.TotalFails = math.max(0, (DB.Delves.TotalFails or 1) - 1)
         if DB.Delves.DelveDetails["Sonnentötersanktum"] then
@@ -252,16 +253,14 @@ local function UpdateDelveStatus()
     local isDelveMap = false
     local delveName = ""
 
-    -- 1. Eindeutige Map-ID prüfen
     if mapID and ActiveMapLookup[mapID] then
         isDelveMap = true
         delveName = ActiveMapLookup[mapID]
     end
     
-    -- 2. Fallback über Szenario (ABER NUR, wenn es GANZ SICHER eine Tiefe ist -> FindDelveTier!)
     if not isDelveMap and inScenario then
         local t = FindDelveTier()
-        if t then -- Absoluter Schutz: Nur wenn das offizielle Tiefen-Widget geladen ist!
+        if t then 
             local scenName = select(1, C_Scenario.GetInfo())
             if scenName and type(scenName) == "string" then
                 local sNameLower = string.lower(scenName)
@@ -280,7 +279,6 @@ local function UpdateDelveStatus()
                         isDelveMap = true
                         delveName = d.locName
                         
-                        -- Dynamisches Lernen für diese Sitzung
                         if mapID and not BLACKLIST_MAPS[mapID] then
                             ActiveMapLookup[mapID] = d.locName
                         end
@@ -304,10 +302,15 @@ local function UpdateDelveStatus()
             fallbackTimer = 0
         end
     else
-        -- FAILS TRACKEN (Wenn man die Tiefe verlässt, ohne sie abzuschließen)
+        -- FAILS TRACKEN
         if currentDelve.isActive and currentDelve.started and not currentDelve.isCompleted then
             if AUI.DelveDB then
                 local charName = UnitName("player") .. "-" .. GetRealmName()
+                local className = UnitClass("player") or "Unbekannt"
+                local specIndex = GetSpecialization()
+                local specName = specIndex and select(2, GetSpecializationInfo(specIndex)) or "Unbekannt"
+                local fullSpecName = className .. " - " .. specName
+                
                 AUI.DelveDB.TotalFails = (AUI.DelveDB.TotalFails or 0) + 1
                 
                 if AUI.DelveDB.DelveDetails and AUI.DelveDB.DelveDetails[currentDelve.name] then
@@ -337,7 +340,7 @@ local function UpdateDelveStatus()
                     tier = currentDelve.tier,
                     date = date("%d.%m.%y %H:%M"),
                     charName = UnitName("player"),
-                    spec = GetSpecialization() and select(2, GetSpecializationInfo(GetSpecialization())) or "Unbekannt"
+                    spec = fullSpecName
                 }
                 print("|cffff0000A-UI:|r Tiefe abgebrochen / fehlgeschlagen.")
             end
@@ -345,7 +348,6 @@ local function UpdateDelveStatus()
         currentDelve.isActive = false
         currentDelve.started = false
         currentDelve.isCompleted = false
-        PendingPin = nil
     end
 end
 
@@ -378,7 +380,6 @@ local function OnEvent(self, event, ...)
         if event == "PLAYER_ENTERING_WORLD" then AUI:InitDelveDatabase() end
         C_Timer.After(1.0, UpdateDelveStatus)
 
-    -- WIEDERBELEBUNGSPOSTEN (Erkennung über Popup-Toast)
     elseif event == "DISPLAY_EVENT_TOAST_LINK" then
         if currentDelve.isActive then
             local message = ...
@@ -392,7 +393,6 @@ local function OnEvent(self, event, ...)
             end
         end
 
-    -- KURIOSITÄTEN (Direkt über Server-Befehl)
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, targetName, castGUID, spellID = ...
         if unit == "player" and currentDelve.isActive and targetName then
@@ -404,7 +404,6 @@ local function OnEvent(self, event, ...)
             end)
         end
         
-    -- BANNER & KISTEN-LADEBALKEN
     elseif event == "UNIT_SPELLCAST_START" or event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unitTarget, castGUID, spellID = ...
         if unitTarget == "player" and currentDelve.isActive then
@@ -455,11 +454,19 @@ local function OnEvent(self, event, ...)
             local runTime = GetTime() - currentDelve.startTime
             local specIndex = GetSpecialization()
             local specName = specIndex and select(2, GetSpecializationInfo(specIndex)) or "Unbekannt"
+            local className = UnitClass("player") or "Unbekannt"
+            local fullSpecName = className .. " - " .. specName
             local charName = UnitName("player") .. "-" .. GetRealmName()
+            
+            -- Rolle bestimmen
+            local role = specIndex and GetSpecializationRole(specIndex) or "NONE"
+            local roleName = (role == "TANK" and "Tank") or (role == "HEALER" and "Heiler") or (role == "DAMAGER" and "DPS") or "Unbekannt"
             
             db.TotalRuns = (db.TotalRuns or 0) + 1
             db.RunsPerTier[currentDelve.tier] = (db.RunsPerTier[currentDelve.tier] or 0) + 1
-            db.RunsPerSpec[specName] = (db.RunsPerSpec[specName] or 0) + 1
+            db.RunsPerSpec[fullSpecName] = (db.RunsPerSpec[fullSpecName] or 0) + 1
+            db.RunsPerRole = db.RunsPerRole or {}
+            db.RunsPerRole[roleName] = (db.RunsPerRole[roleName] or 0) + 1
             db.RunsPerCharacter[charName] = (db.RunsPerCharacter[charName] or 0) + 1
             
             if not db.DelveDetails[currentDelve.name] then db.DelveDetails[currentDelve.name] = { runs = 0, success = 0, fails = 0, maxTier = 0 } end
@@ -474,6 +481,10 @@ local function OnEvent(self, event, ...)
             -- Charakter Stats updaten
             if db.Characters and db.Characters[charName] then
                 local cdb = db.Characters[charName]
+                cdb.RunsPerSpec = cdb.RunsPerSpec or {}
+                cdb.RunsPerRole = cdb.RunsPerRole or {}
+                cdb.RunsPerSpec[fullSpecName] = (cdb.RunsPerSpec[fullSpecName] or 0) + 1
+                cdb.RunsPerRole[roleName] = (cdb.RunsPerRole[roleName] or 0) + 1
                 cdb.TotalRuns = (cdb.TotalRuns or 0) + 1
                 cdb.LastPlayed = currentDelve.name .. " (Stufe " .. currentDelve.tier .. ")"
                 
@@ -872,12 +883,13 @@ UI.TopLine2:SetTemplate("Default")
 
 UI.Stats.TopChar = CreateStatLine(UI.StatsContainer, -165, "Bester Charakter (Meiste Runs):")
 UI.Stats.TopSpec = CreateStatLine(UI.StatsContainer, -190, "Meistgespielte Spezialisierung:")
-UI.Stats.MostPlayedDelve = CreateStatLine(UI.StatsContainer, -215, "Meistgespielte Tiefe:")
-UI.Stats.HighestTier = CreateStatLine(UI.StatsContainer, -240, "Höchste abgeschlossene Stufe:")
+UI.Stats.TopRole = CreateStatLine(UI.StatsContainer, -215, "Meistgespielte Rolle:")
+UI.Stats.MostPlayedDelve = CreateStatLine(UI.StatsContainer, -240, "Meistgespielte Tiefe:")
+UI.Stats.HighestTier = CreateStatLine(UI.StatsContainer, -265, "Höchste abgeschlossene Stufe:")
 
 UI.TopLine3 = CreateFrame("Frame", nil, UI.StatsContainer, "BackdropTemplate")
 UI.TopLine3:SetSize(700, 2)
-UI.TopLine3:SetPoint("TOPLEFT", UI.StatsContainer, "TOPLEFT", 20, -275)
+UI.TopLine3:SetPoint("TOPLEFT", UI.StatsContainer, "TOPLEFT", 20, -300)
 UI.TopLine3:SetTemplate("Default")
 
 UI.BestRunTitle = UI.StatsContainer:CreateFontString(nil, "OVERLAY")
@@ -885,12 +897,12 @@ UI.BestRunTitle:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 16, "NONE")
 UI.BestRunTitle:SetPoint("TOP", UI.TopLine3, "BOTTOM", 0, -15)
 UI.BestRunTitle:SetText("|cff00ff00Persönliche Bestzeit|r")
 
-UI.Stats.BestDelveName = CreateStatLine(UI.StatsContainer, -325, "Tiefe & Stufe:")
-UI.Stats.BestDelveTime = CreateStatLine(UI.StatsContainer, -350, "Zeit:")
+UI.Stats.BestDelveName = CreateStatLine(UI.StatsContainer, -350, "Tiefe & Stufe:")
+UI.Stats.BestDelveTime = CreateStatLine(UI.StatsContainer, -375, "Zeit:")
 
 UI.TopLine4 = CreateFrame("Frame", nil, UI.StatsContainer, "BackdropTemplate")
 UI.TopLine4:SetSize(700, 2)
-UI.TopLine4:SetPoint("TOPLEFT", UI.StatsContainer, "TOPLEFT", 20, -385)
+UI.TopLine4:SetPoint("TOPLEFT", UI.StatsContainer, "TOPLEFT", 20, -410)
 UI.TopLine4:SetTemplate("Default")
 
 UI.FailTitle = UI.StatsContainer:CreateFontString(nil, "OVERLAY")
@@ -898,9 +910,9 @@ UI.FailTitle:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 16, "NONE")
 UI.FailTitle:SetPoint("TOP", UI.TopLine4, "BOTTOM", 0, -15)
 UI.FailTitle:SetText("|cffff0000Letzter Fehlschlag|r")
 
-UI.Stats.LastFailDelve = CreateStatLine(UI.StatsContainer, -435, "Tiefe & Stufe:")
-UI.Stats.LastFailChar = CreateStatLine(UI.StatsContainer, -460, "Charakter & Spec:")
-UI.Stats.LastFailDate = CreateStatLine(UI.StatsContainer, -485, "Datum:")
+UI.Stats.LastFailDelve = CreateStatLine(UI.StatsContainer, -460, "Tiefe & Stufe:")
+UI.Stats.LastFailChar = CreateStatLine(UI.StatsContainer, -485, "Charakter & Spec:")
+UI.Stats.LastFailDate = CreateStatLine(UI.StatsContainer, -510, "Datum:")
 
 
 -- ======================= CHARAKTER TAB =======================
@@ -916,13 +928,15 @@ UI.CharTopLine2:SetSize(700, 2)
 UI.CharTopLine2:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -145)
 UI.CharTopLine2:SetTemplate("Default")
 
-UI.CharStats.MostPlayedDelve = CreateStatLine(UI.CharStatsContainer, -165, "Meistgespielte Tiefe:")
-UI.CharStats.HighestTier = CreateStatLine(UI.CharStatsContainer, -190, "Höchste abgeschlossene Stufe:")
-UI.CharStats.LastPlayed = CreateStatLine(UI.CharStatsContainer, -215, "Zuletzt gespielt:")
+UI.CharStats.TopSpec = CreateStatLine(UI.CharStatsContainer, -165, "Meistgespielte Spezialisierung:")
+UI.CharStats.TopRole = CreateStatLine(UI.CharStatsContainer, -190, "Meistgespielte Rolle:")
+UI.CharStats.MostPlayedDelve = CreateStatLine(UI.CharStatsContainer, -215, "Meistgespielte Tiefe:")
+UI.CharStats.HighestTier = CreateStatLine(UI.CharStatsContainer, -240, "Höchste abgeschlossene Stufe:")
+UI.CharStats.LastPlayed = CreateStatLine(UI.CharStatsContainer, -265, "Zuletzt gespielt:")
 
 UI.CharTopLine3 = CreateFrame("Frame", nil, UI.CharStatsContainer, "BackdropTemplate")
 UI.CharTopLine3:SetSize(700, 2)
-UI.CharTopLine3:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -250)
+UI.CharTopLine3:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -300)
 UI.CharTopLine3:SetTemplate("Default")
 
 UI.CharBestRunTitle = UI.CharStatsContainer:CreateFontString(nil, "OVERLAY")
@@ -930,12 +944,12 @@ UI.CharBestRunTitle:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 16, "NO
 UI.CharBestRunTitle:SetPoint("TOP", UI.CharTopLine3, "BOTTOM", 0, -15)
 UI.CharBestRunTitle:SetText("|cff00ff00Persönliche Bestzeit (Charakter)|r")
 
-UI.CharStats.BestDelveName = CreateStatLine(UI.CharStatsContainer, -300, "Tiefe & Stufe:")
-UI.CharStats.BestDelveTime = CreateStatLine(UI.CharStatsContainer, -325, "Zeit:")
+UI.CharStats.BestDelveName = CreateStatLine(UI.CharStatsContainer, -350, "Tiefe & Stufe:")
+UI.CharStats.BestDelveTime = CreateStatLine(UI.CharStatsContainer, -375, "Zeit:")
 
 UI.CharTopLine4 = CreateFrame("Frame", nil, UI.CharStatsContainer, "BackdropTemplate")
 UI.CharTopLine4:SetSize(700, 2)
-UI.CharTopLine4:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -360)
+UI.CharTopLine4:SetPoint("TOPLEFT", UI.CharStatsContainer, "TOPLEFT", 20, -410)
 UI.CharTopLine4:SetTemplate("Default")
 
 UI.CharFailTitle = UI.CharStatsContainer:CreateFontString(nil, "OVERLAY")
@@ -943,12 +957,12 @@ UI.CharFailTitle:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 16, "NONE"
 UI.CharFailTitle:SetPoint("TOP", UI.CharTopLine4, "BOTTOM", 0, -15)
 UI.CharFailTitle:SetText("|cffff0000Letzter Fehlschlag (Charakter)|r")
 
-UI.CharStats.LastFailDelve = CreateStatLine(UI.CharStatsContainer, -410, "Tiefe & Stufe:")
-UI.CharStats.LastFailDate = CreateStatLine(UI.CharStatsContainer, -435, "Datum:")
+UI.CharStats.LastFailDelve = CreateStatLine(UI.CharStatsContainer, -460, "Tiefe & Stufe:")
+UI.CharStats.LastFailDate = CreateStatLine(UI.CharStatsContainer, -485, "Datum:")
 
 
 -- =====================================================================
--- ELVUI-STYLED FORTSCHRITTSBUTTONS
+-- ELVUI-STYLED FORTSCHRITTSBUTTONS (An UI angeheftet)
 -- =====================================================================
 local function CreateElvUIStyledButton(parent, width, height, anchor, pointX, pointY, iconTex, titleText, r, g, b)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
@@ -1500,6 +1514,7 @@ function AUI:UpdateDelveUI()
     
     local topChar, charRuns = GetTopFromTable(db.RunsPerCharacter)
     local topSpec, specRuns = GetTopFromTable(db.RunsPerSpec)
+    local topRole, roleRuns = GetTopFromTable(db.RunsPerRole)
     local topDelve = "-"
     local topDelveRuns = 0
     for name, data in pairs(db.DelveDetails) do
@@ -1508,6 +1523,7 @@ function AUI:UpdateDelveUI()
     
     UI.Stats.TopChar:SetText(topChar ~= "-" and (topChar .. " (" .. charRuns .. ")") or "-")
     UI.Stats.TopSpec:SetText(topSpec ~= "-" and (topSpec .. " (" .. specRuns .. ")") or "-")
+    UI.Stats.TopRole:SetText(topRole ~= "-" and (topRole .. " (" .. roleRuns .. ")") or "-")
     UI.Stats.MostPlayedDelve:SetText(topDelve ~= "-" and (topDelve .. " (" .. topDelveRuns .. ")") or "-")
 
     local highestTier = 0
@@ -1554,6 +1570,12 @@ function AUI:UpdateDelveUI()
         UI.CharStats.TotalDeaths:SetText(cdb.TotalDeaths or 0)
         UI.CharStats.TotalCurios:SetText(cdb.TotalCurios or 0)
         UI.CharStats.TotalBanners:SetText(cdb.TotalBanners or 0)
+        
+        local cTopSpec, cSpecRuns = GetTopFromTable(cdb.RunsPerSpec)
+        local cTopRole, cRoleRuns = GetTopFromTable(cdb.RunsPerRole)
+        
+        UI.CharStats.TopSpec:SetText(cTopSpec ~= "-" and (cTopSpec .. " (" .. cSpecRuns .. ")") or "-")
+        UI.CharStats.TopRole:SetText(cTopRole ~= "-" and (cTopRole .. " (" .. cRoleRuns .. ")") or "-")
         
         local cTopDelve = "-"
         local cTopDelveRuns = 0
