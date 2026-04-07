@@ -31,7 +31,7 @@ end
 function AUI:UpdateIcons()
     if not AUI.buttons then return end
     local db = E.db.AUI.microbar
-    local LCG = E.Libs.CustomGlow -- Die offizielle ElvUI Glow-Bibliothek
+    local LCG = E.Libs.CustomGlow 
     
     for i, data in ipairs(AUI.buttons) do
         local tex = data.iconTex
@@ -64,23 +64,18 @@ function AUI:UpdateIcons()
                 
                 local isMailAndHasNew = (data.btn:GetName() == "AUI_MailButton" and HasNewMail())
                 
-                -- WENN POST DA IST:
                 if isMailAndHasNew then
-                    -- Farbe setzen
                     if db.mailColorEnable then
                         tex:SetDesaturated(false)
                         tex:SetVertexColor(db.mailColor.r, db.mailColor.g, db.mailColor.b)
                     end
                     
-                    -- Glow anschalten
                     if db.glowEnable and db.mailGlow and LCG then
                         if db.glowType == "pixel" then LCG.PixelGlow_Start(data.wrapper)
                         elseif db.glowType == "autocast" then LCG.AutoCastGlow_Start(data.wrapper)
                         else LCG.ButtonGlow_Start(data.wrapper) end
                     end
-                -- WENN KEINE POST DA IST:
                 else
-                    -- Farbe zurücksetzen
                     tex:SetDesaturated(db.desaturateAll)
                     
                     if db.colorAll then
@@ -98,7 +93,6 @@ function AUI:UpdateIcons()
                         tex:SetVertexColor(1, 1, 1)
                     end
                     
-                    -- Glow STOPPEN
                     if LCG then
                         LCG.PixelGlow_Stop(data.wrapper)
                         LCG.AutoCastGlow_Stop(data.wrapper)
@@ -131,7 +125,6 @@ local function GetStyleColor(prefix, typeStr)
 end
 
 function AUI:UpdateMicrobar()
-    -- NEU: Kampf-Sperre! Wenn wir im Kampf sind, wird das Ausblenden blockiert.
     if InCombatLockdown() then
         AUI.MicrobarNeedsUpdate = true
         return
@@ -162,9 +155,13 @@ function AUI:UpdateMicrobar()
             if db.showTeleportButton == false then data.wrapper:Hide()
             else data.wrapper:Show(); table.insert(activeButtons, data) end
             
-        -- NEU: Sichtbarkeits-Check für den Tiefen-Button
         elseif btnName == "AUI_DelveButton" then
             if db.showDelveButton == false then data.wrapper:Hide()
+            else data.wrapper:Show(); table.insert(activeButtons, data) end
+            
+        -- NEU: Sichtbarkeits-Check für den Alts-Button
+        elseif btnName == "AUI_AltsButton" then
+            if db.showAltsButton == false then data.wrapper:Hide()
             else data.wrapper:Show(); table.insert(activeButtons, data) end
             
         else
@@ -237,7 +234,6 @@ function AUI:UpdateMicrobar()
     end
 end
 
--- NEU: Holt das Update nach dem Kampf nach
 local CombatCatch = CreateFrame("Frame")
 CombatCatch:RegisterEvent("PLAYER_REGEN_ENABLED")
 CombatCatch:SetScript("OnEvent", function()
@@ -249,7 +245,6 @@ CombatCatch:SetScript("OnEvent", function()
     end
 end)
 
--- Update-Helfer für Post-Status
 function AUI:UpdateMailState()
     if not AUI.buttons then return end
     AUI:UpdateIcons()
@@ -291,7 +286,6 @@ function AUI:CreateMicrobar()
         end)
     end
     
-    -- NEU: Erstellt den Tiefen-Button
     if not _G["AUI_DelveButton"] then
         local delveBtn = CreateFrame("Button", "AUI_DelveButton", E.UIParent, "SecureActionButtonTemplate")
         delveBtn:RegisterForClicks("AnyUp")
@@ -311,14 +305,38 @@ function AUI:CreateMicrobar()
         end)
     end
 
-    -- NEU: Injector - Fügt den Tiefen-Button dynamisch zur Microbar-Liste hinzu!
+    -- NEU: Erstellt den Alts-Button
+    if not _G["AUI_AltsButton"] then
+        local altsBtn = CreateFrame("Button", "AUI_AltsButton", E.UIParent, "SecureActionButtonTemplate")
+        altsBtn:RegisterForClicks("AnyUp")
+        altsBtn:SetScript("OnClick", function(self)
+            if InCombatLockdown() then 
+                print("|cffff0000A-UI:|r Alts-Dashboard kann im Kampf nicht geöffnet werden.")
+                return 
+            end
+            if AUI_AltInfoFrame then
+                if AUI_AltInfoFrame:IsShown() then 
+                    AUI_AltInfoFrame:Hide() 
+                else 
+                    if AUI.UpdateAltUI then AUI:UpdateAltUI() end
+                    AUI_AltInfoFrame:Show() 
+                end
+            end
+        end)
+    end
+
+    -- Fallback-Injector für Tiefen & Alts (falls sie in der Icons.lua mal fehlen sollten)
     if AUI.MicroIcons then
-        local hasDelve = false
+        local hasDelve, hasAlts = false, false
         for _, iconData in ipairs(AUI.MicroIcons) do
-            if iconData.blizzBtn == "AUI_DelveButton" then hasDelve = true; break end
+            if iconData.blizzBtn == "AUI_DelveButton" then hasDelve = true end
+            if iconData.blizzBtn == "AUI_AltsButton" then hasAlts = true end
         end
         if not hasDelve then
             table.insert(AUI.MicroIcons, { name = "Tiefen", blizzBtn = "AUI_DelveButton", id = "Interface\\Icons\\INV_Misc_Map_01" })
+        end
+        if not hasAlts then
+            table.insert(AUI.MicroIcons, { name = "Alts", blizzBtn = "AUI_AltsButton", id = "Interface\\Icons\\Achievement_GuildPerk_EverybodysFriend" })
         end
     end
 

@@ -40,4 +40,5 @@ AUI.CuratedIconsList = {
     },
     [15] = { [""] = L["Default"], ["Interface\\AddOns\\ElvUI_A-UI\\media\\material\\material21.tga"] = "Material", ["Interface\\Icons\\Spell_Arcane_TeleportDalaran"] = L["Portal"] },
     [16] = { [""] = L["Default"], ["Interface\\AddOns\\ElvUI_A-UI\\media\\material\\material42.tga"] = "Material", ["Interface\\Icons\\inv_misc_bag_08"] = L["Curio"] },
+    [17] = { [""] = L["Default"], ["Interface\\AddOns\\ElvUI_A-UI\\media\\material\\material35.tga"] = "Material", ["Interface\\Icons\\Achievement_DoubleJeopardy"] = L["Masks"] },
 }

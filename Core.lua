@@ -13,7 +13,7 @@ P["AUI"] = {
         enable = true,
         size = 21,
         spacing = 13,
-        buttonsPerRow = 16,
+        buttonsPerRow = 17,
         reverseOrder = false,
         mouseover = false,
         visibilityStr = "[petbattle] hide; [vehicleui] hide; show",
@@ -481,7 +481,7 @@ function AUI:InsertOptions()
             -- NEUES TAB-MENÜ FÜR EINFÄRBUNGEN
             -- =================================================================
             coloring = {
-                type = "group", name = "Einfärbungen", order = 4, childGroups = "tab",
+                type = "group", name = L["Coloring"] or "Coloring", order = 4, childGroups = "tab",
                 args = {
                     datatexts = {
                         order = 1, type = "group", name = "Datatexte",
