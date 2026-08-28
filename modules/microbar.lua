@@ -1,20 +1,30 @@
 local E, L, V, P, G = unpack(ElvUI)
 local AUI = E:GetModule('A-UI')
 
+local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+
 function AUI:UpdateAlpha()
     local bar = _G["AUI_Microbar"]
     if not bar then return end
-    local db = E.db.AUI.microbar
+    local db = E.db.AUI and E.db.AUI.microbar
+    if not db then return end
+    
     if db.mouseover then
-        if bar:IsMouseOver() then E:UIFrameFadeIn(bar, 0.2, bar:GetAlpha(), 1)
-        else E:UIFrameFadeOut(bar, 0.2, bar:GetAlpha(), 0) end
-    else E:UIFrameFadeIn(bar, 0.2, bar:GetAlpha(), 1) end
+        if bar:IsMouseOver() then 
+            E:UIFrameFadeIn(bar, 0.2, bar:GetAlpha(), 1)
+        else 
+            E:UIFrameFadeOut(bar, 0.2, bar:GetAlpha(), 0) 
+        end
+    else 
+        E:UIFrameFadeIn(bar, 0.2, bar:GetAlpha(), 1) 
+    end
 end
 
 function AUI:UpdateVisibility()
     local bar = _G["AUI_Microbar"]
     if not bar then return end
-    local db = E.db.AUI.microbar
+    local db = E.db.AUI and E.db.AUI.microbar
+    if not db then return end
     
     UnregisterStateDriver(bar, "visibility")
     if not db.enable then 
@@ -30,13 +40,14 @@ end
 
 function AUI:UpdateIcons()
     if not AUI.buttons then return end
-    local db = E.db.AUI.microbar
-    local LCG = E.Libs.CustomGlow 
+    local db = E.db.AUI and E.db.AUI.microbar
+    if not db then return end
+    local LCG = (E.Libs and E.Libs.CustomGlow) or LibStub('LibCustomGlow-1.0', true)
     
     for i, data in ipairs(AUI.buttons) do
         local tex = data.iconTex
         if tex then
-            local userIcon = db.customIcons[i]
+            local userIcon = db.customIcons and db.customIcons[i]
             if not userIcon or userIcon == "" then userIcon = data.id end
             
             if userIcon == "portrait" then 
@@ -65,7 +76,7 @@ function AUI:UpdateIcons()
                 local isMailAndHasNew = (data.btn:GetName() == "AUI_MailButton" and HasNewMail())
                 
                 if isMailAndHasNew then
-                    if db.mailColorEnable then
+                    if db.mailColorEnable and db.mailColor then
                         tex:SetDesaturated(false)
                         tex:SetVertexColor(db.mailColor.r, db.mailColor.g, db.mailColor.b)
                     end
@@ -84,7 +95,8 @@ function AUI:UpdateIcons()
                             if classColor then tex:SetVertexColor(classColor.r, classColor.g, classColor.b)
                             else tex:SetVertexColor(1, 1, 1) end
                         else
-                            tex:SetVertexColor(db.globalIconColor.r, db.globalIconColor.g, db.globalIconColor.b)
+                            local gc = db.globalIconColor or {r=1, g=1, b=1}
+                            tex:SetVertexColor(gc.r, gc.g, gc.b)
                         end
                     elseif db.individualIconColors and db.individualIconColors[i] then
                         local c = db.individualIconColors[i]
@@ -105,8 +117,10 @@ function AUI:UpdateIcons()
 end
 
 local function GetStyleColor(prefix, typeStr)
-    local db = E.db.AUI.microbar
+    local db = E.db.AUI and E.db.AUI.microbar
+    if not db then return 1, 1, 1 end
     local key = prefix .. typeStr
+    
     if db[key.."ColorEnable"] then
         if db[key.."ClassColor"] then
             local color = E:ClassColor(E.myclass) or RAID_CLASS_COLORS[E.myclass]
@@ -129,13 +143,13 @@ function AUI:UpdateMicrobar()
         AUI.MicrobarNeedsUpdate = true
         return
     end
-
-    local db = E.db.AUI.microbar
+    local db = E.db.AUI and E.db.AUI.microbar
     local bar = _G["AUI_Microbar"]
-    if not bar then return end
+    if not bar or not db then return end
+    
     AUI:UpdateVisibility()
     if not db.enable then return end
-
+    
     local activeButtons = {}
     local hasMail = HasNewMail()
     
@@ -156,10 +170,9 @@ function AUI:UpdateMicrobar()
             else data.wrapper:Show(); table.insert(activeButtons, data) end
             
         elseif btnName == "AUI_DelveButton" then
-            if db.showDelveButton == false then data.wrapper:Hide()
+            if not isRetail or db.showDelveButton == false then data.wrapper:Hide()
             else data.wrapper:Show(); table.insert(activeButtons, data) end
             
-        -- NEU: Sichtbarkeits-Check für den Alts-Button
         elseif btnName == "AUI_AltsButton" then
             if db.showAltsButton == false then data.wrapper:Hide()
             else data.wrapper:Show(); table.insert(activeButtons, data) end
@@ -168,14 +181,19 @@ function AUI:UpdateMicrobar()
             data.wrapper:Show(); table.insert(activeButtons, data)
         end
     end
-
-    local padding, count, buttonsPerRow = db.barPadding or 4, #activeButtons, db.buttonsPerRow or 15
-    local numCols, numRows = math.min(count, buttonsPerRow), math.ceil(count / buttonsPerRow)
+    
+    local padding = db.barPadding or 4
+    local count = #activeButtons
+    local buttonsPerRow = db.buttonsPerRow or 15
+    local numCols = math.min(count, buttonsPerRow)
+    local numRows = math.ceil(count / buttonsPerRow)
     
     if count > 0 then
         bar:SetSize((padding * 2) + (db.size * numCols) + (db.spacing * (numCols - 1)), (padding * 2) + (db.size * numRows) + (db.spacing * (numRows - 1)))
-    else bar:SetSize(padding * 2, padding * 2) end
-
+    else 
+        bar:SetSize(padding * 2, padding * 2) 
+    end
+    
     for i, data in ipairs(activeButtons) do
         local wrapper = data.wrapper
         local visual = data.visual
@@ -184,7 +202,8 @@ function AUI:UpdateMicrobar()
         wrapper:ClearAllPoints()
         
         local displayIndex = db.reverseOrder and (count - i + 1) or i
-        local col, row = (displayIndex - 1) % buttonsPerRow, math.floor((displayIndex - 1) / buttonsPerRow)
+        local col = (displayIndex - 1) % buttonsPerRow
+        local row = math.floor((displayIndex - 1) / buttonsPerRow)
         local xPos = padding + (col * (db.size + db.spacing))
         local yPos = -(padding + (row * (db.size + db.spacing)))
         wrapper:SetPoint("TOPLEFT", bar, "TOPLEFT", xPos, yPos)
@@ -195,18 +214,19 @@ function AUI:UpdateMicrobar()
         
         local innerSize = (db.buttonBackdrop or db.buttonBorder) and (db.size - 2) or db.size
         data.texFrame:SetSize(innerSize, innerSize)
-
         if not db.buttonBackdrop and not db.buttonBorder then 
             visual:SetTemplate("NoBackdrop")
         else
             visual:SetTemplate(db.buttonBackdrop and "Transparent" or "Default")
-            if not db.buttonBackdrop then visual:SetBackdropColor(0, 0, 0, 0)
+            if not db.buttonBackdrop then 
+                visual:SetBackdropColor(0, 0, 0, 0)
             else 
                 local r, g, b = GetStyleColor("button", "Backdrop")
-                visual:SetBackdropColor(r, g, b, db.buttonBackdropAlpha) 
+                visual:SetBackdropColor(r, g, b, db.buttonBackdropAlpha or 0.5) 
             end
             
-            if not db.buttonBorder then visual:SetBackdropBorderColor(0, 0, 0, 0)
+            if not db.buttonBorder then 
+                visual:SetBackdropBorderColor(0, 0, 0, 0)
             else 
                 local r, g, b = GetStyleColor("button", "Border")
                 visual:SetBackdropBorderColor(r, g, b, 1) 
@@ -220,14 +240,16 @@ function AUI:UpdateMicrobar()
         bar:SetTemplate("NoBackdrop")
     else
         bar:SetTemplate(db.barBackdrop and "Transparent" or "Default")
-        if not db.barBackdrop then bar:SetBackdropColor(0, 0, 0, 0)
+        if not db.barBackdrop then 
+            bar:SetBackdropColor(0, 0, 0, 0)
         else
             local r, g, b = GetStyleColor("bar", "Backdrop")
-            bar:SetBackdropColor(r, g, b, db.barBackdropAlpha)
+            bar:SetBackdropColor(r, g, b, db.barBackdropAlpha or 0.5)
         end
         
-        if not db.barBorder then bar:SetBackdropBorderColor(0, 0, 0, 0)
-        else
+        if not db.barBorder then 
+            bar:SetBackdropBorderColor(0, 0, 0, 0)
+        else 
             local r, g, b = GetStyleColor("bar", "Border")
             bar:SetBackdropBorderColor(r, g, b, 1)
         end
@@ -259,7 +281,10 @@ function AUI:CreateMicrobar()
     bar:SetScript("OnLeave", function() AUI:UpdateAlpha() end)
 
     local AB = E:GetModule('ActionBars')
-    if AB then AB.UpdateMicroButtonsParent = function() end; AB.UpdateMicroPositionDimensions = function() end end
+    if AB then 
+        AB.UpdateMicroButtonsParent = function() end
+        AB.UpdateMicroPositionDimensions = function() end 
+    end
     
     if _G["ElvUI_MicroBar"] then 
         _G["ElvUI_MicroBar"]:Hide() 
@@ -267,11 +292,23 @@ function AUI:CreateMicrobar()
         _G["ElvUI_MicroBar"]:SetScript("OnShow", function(self) self:Hide() end)
     end
 
-    if not _G["AUI_MailButton"] then CreateFrame("Button", "AUI_MailButton", E.UIParent) end
+    -- -----------------------------------------------------------------
+    -- CUSTOM BUTTONS
+    -- -----------------------------------------------------------------
+    if not _G["AUI_MailButton"] then 
+        CreateFrame("Button", "AUI_MailButton", E.UIParent) 
+    end
+    
     if not _G["AUI_CalendarButton"] then 
         local calBtn = CreateFrame("Button", "AUI_CalendarButton", E.UIParent)
         calBtn:RegisterForClicks("AnyUp")
-        calBtn:SetScript("OnClick", function() if ToggleCalendar then ToggleCalendar() end end)
+        calBtn:SetScript("OnClick", function() 
+            if ToggleCalendar then 
+                ToggleCalendar() 
+            elseif _G["GameTimeFrame"] and _G["GameTimeFrame"].Click then
+                _G["GameTimeFrame"]:Click()
+            end
+        end)
     end
 
     if not _G["AUI_TeleportButton"] then
@@ -285,8 +322,25 @@ function AUI:CreateMicrobar()
             if AUI.ToggleTeleportMenu then AUI:ToggleTeleportMenu(self) end
         end)
     end
+
+    -- LFG Button für TBC Classic
+    if not isRetail and not _G["AUI_LFGButton"] then
+        local lfgBtn = CreateFrame("Button", "AUI_LFGButton", E.UIParent)
+        lfgBtn:RegisterForClicks("AnyUp")
+        lfgBtn:SetScript("OnClick", function()
+            if ToggleLFGParentFrame then
+                ToggleLFGParentFrame()
+            elseif ToggleLFDParentFrame then
+                ToggleLFDParentFrame()
+            elseif PVEFrame_ToggleFrame then
+                PVEFrame_ToggleFrame()
+            elseif _G["LFGParentFrame"] then
+                if _G["LFGParentFrame"]:IsShown() then HideUIPanel(_G["LFGParentFrame"]) else ShowUIPanel(_G["LFGParentFrame"]) end
+            end
+        end)
+    end
     
-    if not _G["AUI_DelveButton"] then
+    if isRetail and not _G["AUI_DelveButton"] then
         local delveBtn = CreateFrame("Button", "AUI_DelveButton", E.UIParent, "SecureActionButtonTemplate")
         delveBtn:RegisterForClicks("AnyUp")
         delveBtn:SetScript("OnClick", function(self)
@@ -305,7 +359,6 @@ function AUI:CreateMicrobar()
         end)
     end
 
-    -- NEU: Erstellt den Alts-Button
     if not _G["AUI_AltsButton"] then
         local altsBtn = CreateFrame("Button", "AUI_AltsButton", E.UIParent, "SecureActionButtonTemplate")
         altsBtn:RegisterForClicks("AnyUp")
@@ -325,14 +378,14 @@ function AUI:CreateMicrobar()
         end)
     end
 
-    -- Fallback-Injector für Tiefen & Alts (falls sie in der Icons.lua mal fehlen sollten)
+    -- Fallback-Injector (Tiefen nur in Retail, Alts in beiden)
     if AUI.MicroIcons then
         local hasDelve, hasAlts = false, false
         for _, iconData in ipairs(AUI.MicroIcons) do
             if iconData.blizzBtn == "AUI_DelveButton" then hasDelve = true end
             if iconData.blizzBtn == "AUI_AltsButton" then hasAlts = true end
         end
-        if not hasDelve then
+        if isRetail and not hasDelve then
             table.insert(AUI.MicroIcons, { name = "Tiefen", blizzBtn = "AUI_DelveButton", id = "Interface\\Icons\\INV_Misc_Map_01" })
         end
         if not hasAlts then
@@ -364,7 +417,11 @@ function AUI:CreateMicrobar()
                 hooksecurefunc(blizzBtn, "SetAlpha", function(self, alpha) if alpha > 0 then self:SetAlpha(0) end end)
                 blizzBtn.auiHookedAlpha = true
             end
-            blizzBtn:Show(); blizzBtn.ClearAllPoints = function() end; blizzBtn.SetPoint = function() end; blizzBtn.SetParent = function() end; blizzBtn.Hide = function() end
+            blizzBtn:Show()
+            blizzBtn.ClearAllPoints = function() end
+            blizzBtn.SetPoint = function() end
+            blizzBtn.SetParent = function() end
+            blizzBtn.Hide = function() end
             
             blizzBtn:SetScript("OnEnter", function(self) 
                 AUI:UpdateAlpha()
@@ -374,12 +431,11 @@ function AUI:CreateMicrobar()
                     visual:SetScale(1.15)
                     visual:SetFrameLevel(20)
                 end
-
-                local btnName = self:GetName()
+                local bName = self:GetName()
                 E:Delay(0.05, function()
                     if not self:IsMouseOver() then return end
                     if AUI.ShowMicroButtonTooltip then
-                        AUI:ShowMicroButtonTooltip(wrapper, btnName, data)
+                        AUI:ShowMicroButtonTooltip(wrapper, bName, data)
                     end
                 end)
             end)
@@ -395,10 +451,10 @@ function AUI:CreateMicrobar()
                     visual:SetScale(1)
                     visual:SetFrameLevel(10)
                 end
-
                 if AUI.ClearTooltipStyle then AUI:ClearTooltipStyle() end
                 GameTooltip:Hide()
             end)
+            
             table.insert(AUI.buttons, { wrapper = wrapper, visual = visual, texFrame = texFrame, btn = blizzBtn, id = data.id, iconTex = tex, isGlowing = false, isMailGlowing = false })
         end
     end

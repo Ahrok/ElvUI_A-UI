@@ -1,31 +1,72 @@
 local E, L, V, P, G = unpack(ElvUI)
 local AUI = E:GetModule('A-UI')
 
+local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 local AltTracker = CreateFrame("Frame")
 
-AUI.AltSortBy = "ilvl"
+AUI.AltSortBy = isRetail and "ilvl" or "level"
 AUI.AltSortAsc = false
 
 -- =====================================================================
--- 0. MIDNIGHT KONFIGURATION (Nur noch für den Itemlevel Stat-Squish!)
+-- 0. KONFIGURATION & ICON-LOOKUP FÜR CLASSIC
 -- =====================================================================
 local AUI_CONFIG = {
-    -- Ab welchem Itemlevel soll der GS welche Farbe bekommen?
-    IlvlEpic = 250,      -- Lila
-    IlvlRare = 230,      -- Blau
-    IlvlUncommon = 200   -- Grün
+    IlvlEpic = isRetail and 250 or 115,
+    IlvlRare = isRetail and 230 or 100,
+    IlvlUncommon = isRetail and 200 or 85
 }
 
+local CLASSIC_PROF_ICONS = {
+    ["Alchemie"]          = "Interface\\Icons\\Trade_Alchemy",
+    ["Alchimie"]          = "Interface\\Icons\\Trade_Alchemy",
+    ["Alchemy"]           = "Interface\\Icons\\Trade_Alchemy",
+    ["Schmiedekunst"]     = "Interface\\Icons\\Trade_BlackSmithing",
+    ["Blacksmithing"]     = "Interface\\Icons\\Trade_BlackSmithing",
+    ["Verzauberkunst"]    = "Interface\\Icons\\Trade_Engraving",
+    ["Enchanting"]        = "Interface\\Icons\\Trade_Engraving",
+    ["Ingenieurskunst"]   = "Interface\\Icons\\Trade_Engineering",
+    ["Engineering"]       = "Interface\\Icons\\Trade_Engineering",
+    ["Lederverarbeitung"] = "Interface\\Icons\\Trade_LeatherWorking",
+    ["Leatherworking"]    = "Interface\\Icons\\Trade_LeatherWorking",
+    ["Schneidern"]        = "Interface\\Icons\\Trade_Tailoring",
+    ["Schneiderei"]       = "Interface\\Icons\\Trade_Tailoring",
+    ["Tailoring"]         = "Interface\\Icons\\Trade_Tailoring",
+    ["Bergbau"]           = "Interface\\Icons\\Trade_Mining",
+    ["Mining"]            = "Interface\\Icons\\Trade_Mining",
+    ["Kräuterkunde"]      = "Interface\\Icons\\Trade_Herbalism",
+    ["Herbalism"]         = "Interface\\Icons\\Trade_Herbalism",
+    ["Kürschnerei"]       = "Interface\\Icons\\INV_Misc_Pelt_Wolf_01",
+    ["Skinning"]          = "Interface\\Icons\\INV_Misc_Pelt_Wolf_01",
+    ["Juwelenschleifen"]  = "Interface\\Icons\\INV_Misc_Gem_01",
+    ["Jewelcrafting"]     = "Interface\\Icons\\INV_Misc_Gem_01",
+    ["Kochkunst"]         = "Interface\\Icons\\INV_Misc_Food_15",
+    ["Kochen"]            = "Interface\\Icons\\INV_Misc_Food_15",
+    ["Cooking"]           = "Interface\\Icons\\INV_Misc_Food_15",
+    ["Erste Hilfe"]       = "Interface\\Icons\\Spell_Holy_SealOfSacrifice",
+    ["First Aid"]         = "Interface\\Icons\\Spell_Holy_SealOfSacrifice",
+    ["Angeln"]            = "Interface\\Icons\\Trade_Fishing",
+    ["Fishing"]           = "Interface\\Icons\\Trade_Fishing",
+    ["Schlösserknacken"]  = "Interface\\Icons\\Spell_Nature_MoonKey",
+    ["Lockpicking"]       = "Interface\\Icons\\Spell_Nature_MoonKey",
+}
+
+local function GetClassicProfessionIcon(name)
+    if not name then return "Interface\\Icons\\INV_Misc_QuestionMark" end
+    return CLASSIC_PROF_ICONS[name] or "Interface\\Icons\\INV_Misc_QuestionMark"
+end
+
 -- =====================================================================
--- 1. DYNAMISCHER WÄHRUNGSSCANNER
+-- 1. DYNAMISCHER WÄHRUNGSSCANNER (RETAIL)
 -- =====================================================================
 local function GetDynamicCurrencyIDs()
+    if not isRetail then return {} end
     if AUI.CurrencyCache and AUI.CurrencyCache.Catalyst then return AUI.CurrencyCache end
     AUI.CurrencyCache = AUI.CurrencyCache or {}
 
     local function ParseCurrencyName(curID, name)
         local n = string.lower(name)
-        if string.find(n, "restaurierter kastenschlüssel") or string.find(n, "restored coffer key") or string.find(n, "kastenschlüssel") then AUI.CurrencyCache.Key = curID
+        if string.find(n, "kastenschlüsselsplitter") or string.find(n, "coffer key shard") then AUI.CurrencyCache.Shard = curID
+        elseif string.find(n, "restaurierter kastenschlüssel") or string.find(n, "restored coffer key") or string.find(n, "kastenschlüssel") then AUI.CurrencyCache.Key = curID
         elseif string.find(n, "morgenlichtwappen des veteranen") or string.find(n, "veteran's dawning crest") then AUI.CurrencyCache.CrestVet = curID
         elseif string.find(n, "morgenlichtwappen des champions") or string.find(n, "champion's dawning crest") then AUI.CurrencyCache.CrestChamp = curID
         elseif string.find(n, "morgenlichtwappen des helden") or string.find(n, "hero's dawning crest") then AUI.CurrencyCache.CrestHero = curID
@@ -59,24 +100,54 @@ local function GetDynamicCurrencyIDs()
     end
 
     if not AUI.CurrencyCache.Key then AUI.CurrencyCache.Key = 3028 end
+    if not AUI.CurrencyCache.Shard then AUI.CurrencyCache.Shard = 3027 end
     if not AUI.CurrencyCache.Catalyst then AUI.CurrencyCache.Catalyst = 3116 end
 
     return AUI.CurrencyCache
 end
 
 -- =====================================================================
--- 2. HILFSFUNKTIONEN FÜR ICONS, ZEIT & BERUFE
+-- 2. HILFSFUNKTIONEN
 -- =====================================================================
+local function GetSafeTalentTabInfo(tabIndex)
+    if not GetTalentTabInfo then return "-", nil, 0 end
+    local ret1, ret2, ret3, ret4, ret5 = GetTalentTabInfo(tabIndex)
+    if type(ret1) == "string" then
+        return ret1, ret2, tonumber(ret3) or 0
+    elseif type(ret2) == "string" then
+        return ret2, ret4, tonumber(ret5) or 0
+    end
+    return "-", nil, 0
+end
+
 local function GetCurrencyAmount(id)
-    if not id then return 0 end
+    if not id or not C_CurrencyInfo or not C_CurrencyInfo.GetCurrencyInfo then return 0 end
     local info = C_CurrencyInfo.GetCurrencyInfo(id)
     return info and info.quantity or 0
 end
 
+local function GetCurrencyDetails(id)
+    if not id or not C_CurrencyInfo or not C_CurrencyInfo.GetCurrencyInfo then return 0, 0, 0 end
+    local info = C_CurrencyInfo.GetCurrencyInfo(id)
+    if not info then return 0, 0, 0 end
+    local qty = info.quantity or 0
+    local maxQty = info.maxQuantity or 0
+    
+    if maxQty == 0 and info.maxWeeklyQuantity and info.maxWeeklyQuantity > 0 then
+        maxQty = info.maxWeeklyQuantity
+    end
+    
+    local earned = info.useTotalEarnedForMaxQty and info.totalEarned or info.quantityEarnedThisWeek or qty
+    return qty, earned, maxQty
+end
+
 local function GetCurrencyIcon(id)
     if not id then return 134400 end
-    local info = C_CurrencyInfo.GetCurrencyInfo(id)
-    return info and info.iconFileID or 134400
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+        local info = C_CurrencyInfo.GetCurrencyInfo(id)
+        return info and info.iconFileID or 134400
+    end
+    return 134400
 end
 
 local function FormatGold(money)
@@ -89,7 +160,7 @@ local function FormatPlayed(seconds)
     local d = math.floor(seconds / 86400)
     local h = math.floor((seconds % 86400) / 3600)
     if d > 0 then
-        return string.format("%dt %dh", d, h)
+        return string.format("%dd %dh", d, h)
     else
         return string.format("%dh", h)
     end
@@ -101,17 +172,6 @@ local function GetClassHexColor(class)
         return string.format("%02x%02x%02x", color.r * 255, color.g * 255, color.b * 255)
     end
     return "ffffff"
-end
-
-local function GetExpansionNameByMaxSkill(maxSkill)
-    if not maxSkill then return "" end
-    if maxSkill == 100 then return "Midnight"
-    elseif maxSkill == 150 then return "BfA / Kul Tiras"
-    elseif maxSkill == 175 then return "Shadowlands"
-    elseif maxSkill == 115 then return "Legion"
-    elseif maxSkill == 75 then return "Cata / MoP"
-    elseif maxSkill == 300 then return "Classic"
-    else return "Aktuell" end
 end
 
 -- =====================================================================
@@ -138,52 +198,74 @@ local function UpdateCurrentAltInfo()
     local level = UnitLevel("player")
     local gold = GetMoney()
     local faction = UnitFactionGroup("player") or "Neutral"
-    local guildName = GetGuildInfo("player") or "-"
     
-    local ilvl = math.floor(select(2, GetAverageItemLevel()) or 0)
+    local guildNameRaw, guildRankName = GetGuildInfo("player")
+    local guildName = guildNameRaw or "-"
+    local guildRank = guildRankName or "-"
     
-    local specIndex = GetSpecialization()
-    local specName = specIndex and select(2, GetSpecializationInfo(specIndex)) or "-"
-    local role = specIndex and GetSpecializationRole(specIndex) or "NONE"
-    local roleName = (role == "TANK" and "Tank") or (role == "HEALER" and "Heal") or (role == "DAMAGER" and "DPS") or "-"
-    
-    local prof1, prof2 = GetProfessions()
-    local p1Name, p1Icon, p1Skill, p1Max, p1Expan, p1Mod
-    local p2Name, p2Icon, p2Skill, p2Max, p2Expan, p2Mod
-    
-    -- Parameter 8 ist der skillModifier (Ausrüstungs-Bonus / Wissen)
-    if prof1 then
-        local n, i, s, m, _, _, _, mod = GetProfessionInfo(prof1)
-        p1Name, p1Icon, p1Skill, p1Max, p1Mod = n, i, s, m, mod
-        p1Expan = GetExpansionNameByMaxSkill(m)
-    end
-    if prof2 then
-        local n, i, s, m, _, _, _, mod = GetProfessionInfo(prof2)
-        p2Name, p2Icon, p2Skill, p2Max, p2Mod = n, i, s, m, mod
-        p2Expan = GetExpansionNameByMaxSkill(m)
+    local ilvl = 0
+    if GetAverageItemLevel then
+        ilvl = math.floor(select(2, GetAverageItemLevel()) or select(1, GetAverageItemLevel()) or 0)
     end
     
-    local ids = GetDynamicCurrencyIDs()
-    local cofferKeys = GetCurrencyAmount(ids.Key)
-    local catalyst = GetCurrencyAmount(ids.Catalyst)
-    local crestV = GetCurrencyAmount(ids.CrestVet)
-    local crestC = GetCurrencyAmount(ids.CrestChamp)
-    local crestH = GetCurrencyAmount(ids.CrestHero)
-    local crestM = GetCurrencyAmount(ids.CrestMyth)
+    -- Spezialisierung & Rolle
+    local specName, roleName = "-", "-"
+    if isRetail then
+        local specIndex = GetSpecialization()
+        specName = specIndex and select(2, GetSpecializationInfo(specIndex)) or "-"
+        local role = specIndex and GetSpecializationRole(specIndex) or "NONE"
+        roleName = (role == "TANK" and "Tank") or (role == "HEALER" and "Heal") or (role == "DAMAGER" and "DPS") or "-"
+    else
+        local topPts, topTree = -1, "-"
+        local t1, t2, t3 = 0, 0, 0
+        local numTabs = GetNumTalentTabs and GetNumTalentTabs() or 3
+        if numTabs >= 3 then
+            local n1, _, p1 = GetSafeTalentTabInfo(1)
+            local n2, _, p2 = GetSafeTalentTabInfo(2)
+            local n3, _, p3 = GetSafeTalentTabInfo(3)
+            t1, t2, t3 = p1 or 0, p2 or 0, p3 or 0
+            if t1 > topPts then topPts = t1; topTree = n1 or "-" end
+            if t2 > topPts then topPts = t2; topTree = n2 or "-" end
+            if t3 > topPts then topPts = t3; topTree = n3 or "-" end
+        end
+        specName = (topPts > 0) and string.format("%s (%d/%d/%d)", topTree, t1, t2, t3) or (L["Unspent"] or "Unspent")
+        roleName = "-"
+    end
     
-    local mplusScore = C_ChallengeMode.GetOverallDungeonScore() or 0
-    local ksLevel = C_MythicPlus.GetOwnedKeystoneLevel() or 0
-    local ksMapID = C_MythicPlus.GetOwnedKeystoneChallengeMapID()
-    local ksString = "-"
+    -- Berufe
+    local p1Name, p1Icon, p1Skill, p1Max, p1Mod
+    local p2Name, p2Icon, p2Skill, p2Max, p2Mod
     
-    if ksLevel > 0 and ksMapID then
-        local mapName = C_ChallengeMode.GetMapUIInfo(ksMapID)
-        if mapName then
-            local shortName = string.utf8sub(mapName, 1, 12)
-            if string.len(mapName) > 12 then shortName = shortName .. "." end
-            ksString = string.format("%s (+%d)", shortName, ksLevel)
-        else
-            ksString = "+" .. ksLevel
+    if isRetail and GetProfessions then
+        local prof1, prof2 = GetProfessions()
+        if prof1 then
+            local n, i, s, m, _, _, _, mod = GetProfessionInfo(prof1)
+            p1Name, p1Icon, p1Skill, p1Max, p1Mod = n, i, s, m, mod
+        end
+        if prof2 then
+            local n, i, s, m, _, _, _, mod = GetProfessionInfo(prof2)
+            p2Name, p2Icon, p2Skill, p2Max, p2Mod = n, i, s, m, mod
+        end
+    elseif GetNumSkillLines and GetSkillLineInfo then
+        local primaryProfs = {}
+        local numSkills = GetNumSkillLines()
+        for i = 1, numSkills do
+            local skillName, isHeader, _, skillRank, _, skillModifier, skillMaxRank, isAbandonable = GetSkillLineInfo(i)
+            if not isHeader and isAbandonable then
+                table.insert(primaryProfs, {
+                    name = skillName,
+                    icon = GetClassicProfessionIcon(skillName),
+                    skill = skillRank or 0,
+                    max = skillMaxRank or 0,
+                    mod = skillModifier or 0
+                })
+            end
+        end
+        if primaryProfs[1] then
+            p1Name, p1Icon, p1Skill, p1Max, p1Mod = primaryProfs[1].name, primaryProfs[1].icon, primaryProfs[1].skill, primaryProfs[1].max, primaryProfs[1].mod
+        end
+        if primaryProfs[2] then
+            p2Name, p2Icon, p2Skill, p2Max, p2Mod = primaryProfs[2].name, primaryProfs[2].icon, primaryProfs[2].skill, primaryProfs[2].max, primaryProfs[2].mod
         end
     end
     
@@ -193,36 +275,71 @@ local function UpdateCurrentAltInfo()
         currentPlayed = cdb.playedTotal + (GetTime() - cdb.playedSessionStart)
     end
     
-    AUI.AltDB.Characters[charKey] = {
+    local charEntry = {
         name = name,
         realm = realm,
         faction = faction,
         guild = guildName,
+        guildRank = guildRank,
         class = class,
         level = level,
         gold = gold,
         ilvl = ilvl,
         spec = specName,
         role = roleName,
-        p1Name = p1Name, p1Icon = p1Icon, p1Skill = p1Skill, p1Max = p1Max, p1Expan = p1Expan, p1Mod = p1Mod,
-        p2Name = p2Name, p2Icon = p2Icon, p2Skill = p2Skill, p2Max = p2Max, p2Expan = p2Expan, p2Mod = p2Mod,
-        cofferKeys = cofferKeys,
-        catalyst = catalyst,
-        crestV = crestV,
-        crestC = crestC,
-        crestH = crestH,
-        crestM = crestM,
-        mplusScore = mplusScore,
-        keystone = ksString,
-        keystoneLevel = ksLevel,
+        p1Name = p1Name, p1Icon = p1Icon, p1Skill = p1Skill, p1Max = p1Max, p1Mod = p1Mod,
+        p2Name = p2Name, p2Icon = p2Icon, p2Skill = p2Skill, p2Max = p2Max, p2Mod = p2Mod,
         playedTotal = cdb.playedTotal,
         playedSessionStart = cdb.playedSessionStart,
         played = currentPlayed,
         lastUpdate = time()
     }
+    
+    if isRetail then
+        local ids = GetDynamicCurrencyIDs()
+        local shardQty, shardEarned, shardMax = GetCurrencyDetails(ids.Shard)
+        local crestV_qty, crestV_earned, crestV_max = GetCurrencyDetails(ids.CrestVet)
+        local crestC_qty, crestC_earned, crestC_max = GetCurrencyDetails(ids.CrestChamp)
+        local crestH_qty, crestH_earned, crestH_max = GetCurrencyDetails(ids.CrestHero)
+        local crestM_qty, crestM_earned, crestM_max = GetCurrencyDetails(ids.CrestMyth)
+        
+        local ksLevel = C_MythicPlus and C_MythicPlus.GetOwnedKeystoneLevel and C_MythicPlus.GetOwnedKeystoneLevel() or 0
+        local ksMapID = C_MythicPlus and C_MythicPlus.GetOwnedKeystoneChallengeMapID and C_MythicPlus.GetOwnedKeystoneChallengeMapID()
+        local ksString = "-"
+        if ksLevel > 0 and ksMapID and C_ChallengeMode then
+            local mapName = C_ChallengeMode.GetMapUIInfo(ksMapID)
+            if mapName then
+                local shortName = string.utf8sub(mapName, 1, 12)
+                if string.len(mapName) > 12 then shortName = shortName .. "." end
+                ksString = string.format("%s (+%d)", shortName, ksLevel)
+            else
+                ksString = "+" .. ksLevel
+            end
+        end
+        
+        charEntry.cofferKeys = GetCurrencyAmount(ids.Key)
+        charEntry.cofferShardQty = shardQty
+        charEntry.cofferShardEarned = shardEarned
+        charEntry.cofferShardMax = shardMax
+        charEntry.catalyst = GetCurrencyAmount(ids.Catalyst)
+        charEntry.crestV = crestV_qty; charEntry.crestV_earned = crestV_earned; charEntry.crestV_max = crestV_max
+        charEntry.crestC = crestC_qty; charEntry.crestC_earned = crestC_earned; charEntry.crestC_max = crestC_max
+        charEntry.crestH = crestH_qty; charEntry.crestH_earned = crestH_earned; charEntry.crestH_max = crestH_max
+        charEntry.crestM = crestM_qty; charEntry.crestM_earned = crestM_earned; charEntry.crestM_max = crestM_max
+        charEntry.mplusScore = C_ChallengeMode and C_ChallengeMode.GetOverallDungeonScore and C_ChallengeMode.GetOverallDungeonScore() or 0
+        charEntry.keystone = ksString
+        charEntry.keystoneLevel = ksLevel
+    else
+        charEntry.badges = GetItemCount(29434, true) or 0
+        charEntry.honor = (GetHonorCurrency and GetHonorCurrency()) or 0
+        charEntry.arena = (GetArenaCurrency and GetArenaCurrency()) or 0
+    end
+    
+    AUI.AltDB.Characters[charKey] = charEntry
 end
 
 local function UpdateWarbandGold()
+    if not isRetail then return end
     if not AUI.AltDB then AUI:InitAltDatabase() end
     if C_Bank and C_Bank.FetchDepositedMoney then
         local wbGold = C_Bank.FetchDepositedMoney(Enum.BankType.Account)
@@ -274,10 +391,13 @@ AltTracker:RegisterEvent("TIME_PLAYED_MSG")
 AltTracker:RegisterEvent("PLAYER_MONEY")
 AltTracker:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 AltTracker:RegisterEvent("PLAYER_LEVEL_UP")
-AltTracker:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE")
-AltTracker:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-AltTracker:RegisterEvent("BANKFRAME_OPENED")
-pcall(function() AltTracker:RegisterEvent("ACCOUNT_MONEY") end)
+AltTracker:RegisterEvent("SKILL_LINES_CHANGED")
+if isRetail then
+    pcall(function() AltTracker:RegisterEvent("CHALLENGE_MODE_MAPS_UPDATE") end)
+    pcall(function() AltTracker:RegisterEvent("CURRENCY_DISPLAY_UPDATE") end)
+    pcall(function() AltTracker:RegisterEvent("BANKFRAME_OPENED") end)
+    pcall(function() AltTracker:RegisterEvent("ACCOUNT_MONEY") end)
+end
 AltTracker:SetScript("OnEvent", OnEvent)
 
 -- =====================================================================
@@ -300,23 +420,20 @@ tinsert(UISpecialFrames, "AUI_AltInfoFrame")
 UI.Title = UI:CreateFontString(nil, "OVERLAY")
 UI.Title:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 18, "SHADOWOUTLINE")
 UI.Title:SetPoint("TOP", UI, "TOP", 0, -15)
-UI.Title:SetText("|cff00ffd2A-UI|r Alts")
+UI.Title:SetText("|cff00ffd2A-UI|r Alts" .. (isRetail and " (Midnight)" or " (TBC Classic)"))
 
 UI.CloseButton = CreateFrame("Button", nil, UI, "UIPanelCloseButton")
 UI.CloseButton:SetPoint("TOPRIGHT", UI, "TOPRIGHT", -4, -4)
 E:GetModule("Skins"):HandleCloseButton(UI.CloseButton)
 
--- Header Container (Breite: 1410)
 UI.HeaderFrame = CreateFrame("Frame", nil, UI, "BackdropTemplate")
 UI.HeaderFrame:SetSize(1410, 24)
 UI.HeaderFrame:SetPoint("TOPLEFT", UI, "TOPLEFT", 20, -50)
 
--- ScrollFrame (Mit eigener Spur für die Scrollbar)
 UI.ScrollFrame = CreateFrame("ScrollFrame", "AUI_AltScrollFrame", UI, "UIPanelScrollFrameTemplate")
 UI.ScrollFrame:SetPoint("TOPLEFT", UI.HeaderFrame, "BOTTOMLEFT", 0, -5)
 UI.ScrollFrame:SetPoint("BOTTOMRIGHT", UI, "BOTTOMRIGHT", -50, 50) 
 
--- ScrollChild (Muss EXAKT so breit sein wie das HeaderFrame = 1410)
 UI.ScrollChild = CreateFrame("Frame", nil, UI.ScrollFrame)
 UI.ScrollChild:SetSize(1410, 100)
 UI.ScrollFrame:SetScrollChild(UI.ScrollChild)
@@ -325,26 +442,23 @@ if AUI_AltScrollFrameScrollBar and E:GetModule("Skins").HandleScrollBar then
     E:GetModule("Skins"):HandleScrollBar(AUI_AltScrollFrameScrollBar)
 end
 
--- Fußzeile
 UI.BottomLine = CreateFrame("Frame", nil, UI, "BackdropTemplate")
 UI.BottomLine:SetSize(1410, 2)
 UI.BottomLine:SetPoint("BOTTOMLEFT", UI, "BOTTOMLEFT", 20, 40)
 UI.BottomLine:SetTemplate("Default")
 
--- Text rechts (Gold & Zeit) - Exakt am Content-Rand (-50)
 UI.TotalGoldText = UI:CreateFontString(nil, "OVERLAY")
 UI.TotalGoldText:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
 UI.TotalGoldText:SetPoint("BOTTOMRIGHT", UI, "BOTTOMRIGHT", -50, 15)
-UI.TotalGoldText:SetText("Lade Gold...")
+UI.TotalGoldText:SetText("...")
 
--- Text links (Rollen Statistik)
 UI.RoleCountText = UI:CreateFontString(nil, "OVERLAY")
 UI.RoleCountText:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
 UI.RoleCountText:SetPoint("BOTTOMLEFT", UI, "BOTTOMLEFT", 25, 15)
-UI.RoleCountText:SetText("Lade Rollen...")
+UI.RoleCountText:SetText("")
 
 -- =====================================================================
--- 5. SORTIERUNG & HEADER (Pixelgenaues Layout für 1410px)
+-- 5. SORTIERUNG & HEADER
 -- =====================================================================
 local function CreateHeaderBtn(text, width, offsetX, sortKey)
     local btn = CreateFrame("Button", nil, UI.HeaderFrame, "BackdropTemplate")
@@ -362,6 +476,7 @@ local function CreateHeaderBtn(text, width, offsetX, sortKey)
     btn:SetScript("OnLeave", function(self) self.text:SetTextColor(1, 0.82, 0) end)
     
     btn:SetScript("OnClick", function()
+        if sortKey == "none" then return end
         if AUI.AltSortBy == sortKey then
             AUI.AltSortAsc = not AUI.AltSortAsc
         else
@@ -374,28 +489,35 @@ local function CreateHeaderBtn(text, width, offsetX, sortKey)
     return btn
 end
 
--- Spalten Layout (Gesamtbreite = 1410)
 local hFac     = CreateHeaderBtn("", 20, 0, "faction")
-local hClass   = CreateHeaderBtn("Klasse", 30, 20, "class")
-local hName    = CreateHeaderBtn("Name", 110, 50, "name")
-local hRealm   = CreateHeaderBtn("Realm", 110, 160, "realm")
-local hGuild   = CreateHeaderBtn("Gilde", 130, 270, "guild")
-local hSpec    = CreateHeaderBtn("Spec", 110, 400, "spec")
-local hRole    = CreateHeaderBtn("Rolle", 40, 510, "role")
-local hLvl     = CreateHeaderBtn("Lvl", 35, 550, "level")
-local hGS      = CreateHeaderBtn("Ø GS", 45, 585, "ilvl")
-local hProf    = CreateHeaderBtn("Berufe", 100, 630, "none")
-local hPlayed  = CreateHeaderBtn("Spielzeit", 65, 730, "played")
-local hKey     = CreateHeaderBtn("Schlüssel", 40, 795, "cofferKeys")
-local hCat     = CreateHeaderBtn("Katalysator", 40, 835, "catalyst")
-local hScore   = CreateHeaderBtn("M+ Score", 60, 875, "mplusScore")
-local hStone   = CreateHeaderBtn("Aktueller Stein", 120, 935, "keystoneLevel")
-local hCrests  = CreateHeaderBtn("Wappen", 230, 1055, "crestM")
-local hGold    = CreateHeaderBtn("Gold", 100, 1285, "gold")
-local hDel     = CreateHeaderBtn("X", 20, 1385, "none")
+local hClass   = CreateHeaderBtn(L["Class"] or "Class", 30, 20, "class")
+local hName    = CreateHeaderBtn(L["Name"] or "Name", 110, 50, "name")
+local hRealm   = CreateHeaderBtn(L["Realm"] or "Realm", 110, 160, "realm")
+local hGuild   = CreateHeaderBtn(L["Guild"] or "Guild", 130, 270, "guild")
+local hSpec    = CreateHeaderBtn(isRetail and (L["Spec"] or "Spec") or (L["Talents"] or "Talents"), 110, 400, "spec")
+local hRole    = CreateHeaderBtn(isRetail and (L["Role"] or "Role") or "-", 40, 510, isRetail and "role" or "none")
+local hLvl     = CreateHeaderBtn(L["Lvl"] or "Lvl", 35, 550, "level")
+local hGS      = CreateHeaderBtn(isRetail and (L["Avg. iLvl"] or "Ø iLvl") or (L["iLvl"] or "iLvl"), 45, 585, "ilvl")
+local hProf    = CreateHeaderBtn(L["Professions"] or "Professions", 100, 630, "none")
+local hPlayed  = CreateHeaderBtn(L["Playtime"] or "Playtime", 65, 730, "played")
 
-hDel:SetScript("OnClick", nil)
-hProf:SetScript("OnClick", nil)
+local hCol1, hCol2, hCol3, hCol4, hCol5
+if isRetail then
+    hCol1 = CreateHeaderBtn("Schlüssel", 40, 795, "cofferKeys")
+    hCol2 = CreateHeaderBtn("Katalysator", 40, 835, "catalyst")
+    hCol3 = CreateHeaderBtn("M+ Score", 60, 875, "mplusScore")
+    hCol4 = CreateHeaderBtn("Aktueller Stein", 120, 935, "keystoneLevel")
+    hCol5 = CreateHeaderBtn("Wappen", 230, 1055, "crestM")
+else
+    hCol1 = CreateHeaderBtn(L["Badges"] or "Badges", 70, 795, "badges")
+    hCol2 = CreateHeaderBtn(L["Honor"] or "Honor", 80, 865, "honor")
+    hCol3 = CreateHeaderBtn(L["Arena"] or "Arena", 80, 945, "arena")
+    hCol4 = CreateHeaderBtn(L["PvP Rank"] or "PvP Rank", 100, 1025, "none")
+    hCol5 = CreateHeaderBtn(L["Notes / Details"] or "Notes / Details", 160, 1125, "none")
+end
+
+local hGold = CreateHeaderBtn(L["Gold"] or "Gold", 100, 1285, "gold")
+local hDel  = CreateHeaderBtn("X", 20, 1385, "none")
 
 local altLines = {}
 
@@ -408,16 +530,21 @@ function AUI:UpdateAltUI()
     UpdateCurrentAltInfo() 
     UpdateWarbandGold()
     
-    local ids = GetDynamicCurrencyIDs()
-    hKey.text:SetText("|T" .. GetCurrencyIcon(ids.Key) .. ":16|t")
-    hCat.text:SetText("|T" .. GetCurrencyIcon(ids.Catalyst) .. ":16|t")
+    if isRetail then
+        local ids = GetDynamicCurrencyIDs()
+        hCol1.text:SetText("|T" .. GetCurrencyIcon(ids.Key) .. ":16|t")
+        hCol2.text:SetText("|T" .. GetCurrencyIcon(ids.Catalyst) .. ":16|t")
+    else
+        hCol1.text:SetText("|TInterface\\Icons\\Spell_Holy_ChampionsBond:16|t " .. (L["Badges"] or "Badges"))
+        hCol2.text:SetText("|TInterface\\Icons\\PVPCurrency-Honor-" .. (UnitFactionGroup("player") or "Horde") .. ":16|t " .. (L["Honor"] or "Honor"))
+        hCol3.text:SetText("|TInterface\\Icons\\Spell_Holy_ChampionsGrace:16|t " .. (L["Arena"] or "Arena"))
+    end
     
     for _, line in ipairs(altLines) do line:Hide() end
     
     local sortedAlts = {}
-    local totalGold = AUI.AltDB.WarbandGold or 0
+    local totalGold = (isRetail and AUI.AltDB.WarbandGold) or 0
     local totalPlayedSeconds = 0
-    
     local countTank, countHeal, countDPS = 0, 0, 0
     
     for charKey, data in pairs(AUI.AltDB.Characters) do
@@ -437,6 +564,11 @@ function AUI:UpdateAltUI()
     table.sort(sortedAlts, function(a, b)
         local valA = a[sortCol] or 0
         local valB = b[sortCol] or 0
+        
+        if type(valA) ~= type(valB) then
+            valA = tostring(valA)
+            valB = tostring(valB)
+        end
         
         if type(valA) == "string" and type(valB) == "string" then
             if asc then return valA < valB else return valA > valB end
@@ -513,7 +645,6 @@ function AUI:UpdateAltUI()
             line.prof:SetWidth(100)
             line.prof:SetJustifyH("CENTER")
             
-            -- Tooltip für Berufe Button
             line.profBtn = CreateFrame("Button", nil, line)
             line.profBtn:SetAllPoints(line.prof)
             line.profBtn:SetScript("OnEnter", function(self)
@@ -522,28 +653,26 @@ function AUI:UpdateAltUI()
                     local d = AUI.AltDB.Characters[key]
                     GameTooltip:SetOwner(self, "ANCHOR_TOP")
                     GameTooltip:ClearLines()
-                    GameTooltip:AddLine("Hauptberufe von " .. (d.name or "Unbekannt"), 1, 0.82, 0)
+                    GameTooltip:AddLine(string.format(L["Primary Professions of %s"] or "Primary Professions of %s", d.name or (L["Unknown"] or "Unknown")), 1, 0.82, 0)
                     
                     local found = false
                     if d.p1Name or d.p1Icon then
-                        local n = d.p1Name or "Beruf 1"
-                        local expan = d.p1Expan and (" ("..d.p1Expan..")") or ""
+                        local n = d.p1Name or (L["Professions"] or "Professions")
                         local iStr = d.p1Icon and ("|T"..d.p1Icon..":16|t ") or ""
                         local bonusStr = (d.p1Mod and d.p1Mod > 0) and (" |cff00ff00(+"..d.p1Mod..")|r") or ""
-                        GameTooltip:AddDoubleLine(iStr .. n .. " |cff888888" .. expan .. "|r", (d.p1Skill or 0) .. bonusStr .. " / " .. (d.p1Max or 0), 1, 1, 1, 1, 1, 1)
+                        GameTooltip:AddDoubleLine(iStr .. n, (d.p1Skill or 0) .. bonusStr .. " / " .. (d.p1Max or 0), 1, 1, 1, 1, 1, 1)
                         found = true
                     end
                     if d.p2Name or d.p2Icon then
-                        local n = d.p2Name or "Beruf 2"
-                        local expan = d.p2Expan and (" ("..d.p2Expan..")") or ""
+                        local n = d.p2Name or (L["Professions"] or "Professions")
                         local iStr = d.p2Icon and ("|T"..d.p2Icon..":16|t ") or ""
                         local bonusStr = (d.p2Mod and d.p2Mod > 0) and (" |cff00ff00(+"..d.p2Mod..")|r") or ""
-                        GameTooltip:AddDoubleLine(iStr .. n .. " |cff888888" .. expan .. "|r", (d.p2Skill or 0) .. bonusStr .. " / " .. (d.p2Max or 0), 1, 1, 1, 1, 1, 1)
+                        GameTooltip:AddDoubleLine(iStr .. n, (d.p2Skill or 0) .. bonusStr .. " / " .. (d.p2Max or 0), 1, 1, 1, 1, 1, 1)
                         found = true
                     end
                     
                     if not found then
-                        GameTooltip:AddLine("Keine Hauptberufe erlernt.", 0.5, 0.5, 0.5)
+                        GameTooltip:AddLine(L["No primary professions learned."] or "No primary professions learned.", 0.5, 0.5, 0.5)
                     end
                     
                     GameTooltip:Show()
@@ -558,36 +687,25 @@ function AUI:UpdateAltUI()
             line.played:SetJustifyH("CENTER")
             line.played:SetTextColor(0.8, 0.8, 0.8)
             
-            line.keys = line:CreateFontString(nil, "OVERLAY")
-            line.keys:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
-            line.keys:SetPoint("LEFT", line, "LEFT", 795, 0)
-            line.keys:SetWidth(40)
-            line.keys:SetJustifyH("CENTER")
+            line.col1 = line:CreateFontString(nil, "OVERLAY")
+            line.col1:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
+            line.col1:SetJustifyH("CENTER")
             
-            line.catalyst = line:CreateFontString(nil, "OVERLAY")
-            line.catalyst:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
-            line.catalyst:SetPoint("LEFT", line, "LEFT", 835, 0)
-            line.catalyst:SetWidth(40)
-            line.catalyst:SetJustifyH("CENTER")
+            line.col2 = line:CreateFontString(nil, "OVERLAY")
+            line.col2:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
+            line.col2:SetJustifyH("CENTER")
             
-            line.mscore = line:CreateFontString(nil, "OVERLAY")
-            line.mscore:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
-            line.mscore:SetPoint("LEFT", line, "LEFT", 875, 0)
-            line.mscore:SetWidth(60)
-            line.mscore:SetJustifyH("CENTER")
+            line.col3 = line:CreateFontString(nil, "OVERLAY")
+            line.col3:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
+            line.col3:SetJustifyH("CENTER")
             
-            line.stone = line:CreateFontString(nil, "OVERLAY")
-            line.stone:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
-            line.stone:SetPoint("LEFT", line, "LEFT", 935, 0)
-            line.stone:SetWidth(120)
-            line.stone:SetJustifyH("CENTER")
-            line.stone:SetWordWrap(false)
+            line.col4 = line:CreateFontString(nil, "OVERLAY")
+            line.col4:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
+            line.col4:SetJustifyH("CENTER")
             
-            line.crests = line:CreateFontString(nil, "OVERLAY")
-            line.crests:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
-            line.crests:SetPoint("LEFT", line, "LEFT", 1055, 0)
-            line.crests:SetWidth(230)
-            line.crests:SetJustifyH("CENTER")
+            line.col5 = line:CreateFontString(nil, "OVERLAY")
+            line.col5:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
+            line.col5:SetJustifyH("CENTER")
             
             line.gold = line:CreateFontString(nil, "OVERLAY")
             line.gold:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
@@ -614,7 +732,6 @@ function AUI:UpdateAltUI()
             altLines[i] = line
         end
         
-        -- Fraktion (Blizzard UI Icons)
         if data.faction == "Horde" then
             line.factionIcon:SetTexture("Interface\\FriendsFrame\\PlusManz-Horde")
         elseif data.faction == "Alliance" then
@@ -623,57 +740,70 @@ function AUI:UpdateAltUI()
             line.factionIcon:SetTexture("Interface\\Icons\\INV_BannerPVP_03")
         end
         
-        -- Klasse, Name & Realm
         local classColor = GetClassHexColor(data.class)
         line.classIcon:SetTexture("Interface\\WorldStateFrame\\ICONS-CLASSES")
         line.classIcon:SetTexCoord(unpack(CLASS_ICON_TCOORDS[data.class] or {0, 1, 0, 1}))
-        
         line.name:SetText("|cff" .. classColor .. data.name .. "|r")
         line.realm:SetText(data.realm or "")
-        
-        -- Gilde
         line.guild:SetText(data.guild == "-" and "-" or "<" .. data.guild .. ">")
-        
-        -- Spec & Rolle
         line.spec:SetText(data.spec or "-")
         line.role:SetText("|cff888888" .. (data.role or "-") .. "|r")
-        
-        -- Level
         line.level:SetText(data.level or "?")
         
-        -- Itemlevel Farbe dynamisch berechnen
         local ilvl = data.ilvl or 0
         local colorStr = "|cffffffff"
         if ilvl >= AUI_CONFIG.IlvlEpic then colorStr = "|cffa335ee"
         elseif ilvl >= AUI_CONFIG.IlvlRare then colorStr = "|cff0070dd"
         elseif ilvl >= AUI_CONFIG.IlvlUncommon then colorStr = "|cff1eff00" end
-        line.ilvl:SetText(colorStr .. ilvl .. "|r")
+        line.ilvl:SetText(ilvl > 0 and (colorStr .. ilvl .. "|r") or "-")
         
-        -- Berufe
         local profStr = ""
         if data.p1Icon then profStr = profStr .. "|T" .. data.p1Icon .. ":14|t " .. (data.p1Skill or 0) end
         if data.p2Icon then profStr = profStr .. "  |T" .. data.p2Icon .. ":14|t " .. (data.p2Skill or 0) end
         line.prof:SetText(profStr == "" and "-" or profStr)
         
         line.played:SetText(FormatPlayed(data.played))
-        line.keys:SetText(data.cofferKeys or 0)
         
-        local catCol = (data.catalyst or 0) > 0 and "|cff00ff00" or "|cff888888"
-        line.catalyst:SetText(catCol .. (data.catalyst or 0) .. "|r")
-        
-        local mScore = data.mplusScore or 0
-        local cScore = (mScore > 2000 and "|cffff8000") or (mScore > 1000 and "|cffa335ee") or "|cffffffff"
-        line.mscore:SetText(cScore .. mScore .. "|r")
-        
-        line.stone:SetText(data.keystone or "-")
-        
-        -- Wappen formatieren
-        local cV, cC, cH, cM = data.crestV or 0, data.crestC or 0, data.crestH or 0, data.crestM or 0
-        line.crests:SetText(string.format("|T%s:14|t %d | |T%s:14|t %d | |T%s:14|t %d | |T%s:14|t %d", 
-            GetCurrencyIcon(ids.CrestVet), cV, 
-            GetCurrencyIcon(ids.CrestChamp), cC, 
-            GetCurrencyIcon(ids.CrestHero), cH, 
-            GetCurrencyIcon(ids.CrestMyth), cM))
+        if isRetail then
+            local ids = GetDynamicCurrencyIDs()
+            line.col1:SetPoint("LEFT", line, "LEFT", 795, 0); line.col1:SetWidth(40)
+            line.col1:SetText(data.cofferKeys or 0)
+            
+            local catCol = (data.catalyst or 0) > 0 and "|cff00ff00" or "|cff888888"
+            line.col2:SetPoint("LEFT", line, "LEFT", 835, 0); line.col2:SetWidth(40)
+            line.col2:SetText(catCol .. (data.catalyst or 0) .. "|r")
+            
+            local mScore = data.mplusScore or 0
+            local cScore = (mScore > 2000 and "|cffff8000") or (mScore > 1000 and "|cffa335ee") or "|cffffffff"
+            line.col3:SetPoint("LEFT", line, "LEFT", 875, 0); line.col3:SetWidth(60)
+            line.col3:SetText(cScore .. mScore .. "|r")
+            
+            line.col4:SetPoint("LEFT", line, "LEFT", 935, 0); line.col4:SetWidth(120)
+            line.col4:SetText(data.keystone or "-")
+            
+            local cV, cC, cH, cM = data.crestV or 0, data.crestC or 0, data.crestH or 0, data.crestM or 0
+            line.col5:SetPoint("LEFT", line, "LEFT", 1055, 0); line.col5:SetWidth(230)
+            line.col5:SetText(string.format("|T%s:14|t %d | |T%s:14|t %d | |T%s:14|t %d | |T%s:14|t %d", 
+                GetCurrencyIcon(ids.CrestVet), cV, 
+                GetCurrencyIcon(ids.CrestChamp), cC, 
+                GetCurrencyIcon(ids.CrestHero), cH, 
+                GetCurrencyIcon(ids.CrestMyth), cM))
+        else
+            line.col1:SetPoint("LEFT", line, "LEFT", 795, 0); line.col1:SetWidth(70)
+            line.col1:SetText("|cffffffff" .. (data.badges or 0) .. "|r")
+            
+            line.col2:SetPoint("LEFT", line, "LEFT", 865, 0); line.col2:SetWidth(80)
+            line.col2:SetText("|cff00ffd2" .. (data.honor or 0) .. "|r")
+            
+            line.col3:SetPoint("LEFT", line, "LEFT", 945, 0); line.col3:SetWidth(80)
+            line.col3:SetText("|cffff8000" .. (data.arena or 0) .. "|r")
+            
+            line.col4:SetPoint("LEFT", line, "LEFT", 1025, 0); line.col4:SetWidth(100)
+            line.col4:SetText("-")
+            
+            line.col5:SetPoint("LEFT", line, "LEFT", 1125, 0); line.col5:SetWidth(160)
+            line.col5:SetText("-")
+        end
         
         line.gold:SetText(FormatGold(data.gold or 0))
         line.charKey = data.charKey
@@ -687,12 +817,15 @@ function AUI:UpdateAltUI()
     
     UI.ScrollChild:SetHeight(math.abs(yOffset))
     
-    local warbandStr = FormatGold(AUI.AltDB.WarbandGold or 0)
     local playedStr = FormatPlayed(totalPlayedSeconds)
-    
-    UI.TotalGoldText:SetText(string.format("Spielzeit (Account): |cffdddddd%s|r   |   Kriegsmeutenbank: |cffdddddd%s|r   |   Gesamtgold: |cff00ffd2%s|r", playedStr, warbandStr, FormatGold(totalGold)))
-    
-    UI.RoleCountText:SetText(string.format("Rollen:   |cffddddddTank:|r %d   |   |cffddddddHeal:|r %d   |   |cffddddddDPS:|r %d", countTank, countHeal, countDPS))
+    if isRetail then
+        local warbandStr = FormatGold(AUI.AltDB.WarbandGold or 0)
+        UI.TotalGoldText:SetText(string.format("Playtime (Account): |cffdddddd%s|r   |   Warband Bank: |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r", playedStr, warbandStr, FormatGold(totalGold)))
+        UI.RoleCountText:SetText(string.format("Roles:   |cffddddddTank:|r %d   |   |cffddddddHeal:|r %d   |   |cffddddddDPS:|r %d", countTank, countHeal, countDPS))
+    else
+        UI.TotalGoldText:SetText(string.format(L["Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r"] or "Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r", playedStr, FormatGold(totalGold)))
+        UI.RoleCountText:SetText(string.format(L["Characters: |cff00ffd2%d|r"] or "Characters: |cff00ffd2%d|r", #sortedAlts))
+    end
 end
 
 E:RegisterChatCommand("alts", function()

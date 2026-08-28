@@ -3,7 +3,9 @@ local AUI = E:NewModule('A-UI', 'AceEvent-3.0', 'AceHook-3.0')
 local EP = LibStub("LibElvUIPlugin-1.0")
 local addonName = "ElvUI_A-UI"
 
-AUI.loginTime = GetTime() 
+local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+AUI.isRetail = isRetail
+AUI.loginTime = GetTime()
 
 -- =====================================================================
 -- 1. DEFAULTS IN ELVUI'S P-TABLE
@@ -21,6 +23,7 @@ P["AUI"] = {
         hideMailEmpty = false,
         showCalendarButton = true,
         showTeleportButton = true,
+        showAltsButton = true,
         extendedGuildTooltip = true,
         extendedSystemTooltip = true,
         extendedCharacterTooltip = true,
@@ -116,6 +119,7 @@ local function InsertDefaults(db, defaults)
 end
 
 function AUI:InitDelveDatabase()
+    if not isRetail then return end
     _G["ElvUI_AUIDB"] = _G["ElvUI_AUIDB"] or {}
     local DB = _G["ElvUI_AUIDB"]
     
@@ -182,7 +186,7 @@ local function GetBorderOptions(name, order, dbKey, isThreeColor)
             } or nil,
         }
     }
-
+    
     if dbKey == "leftChat" or dbKey == "rightChat" then
         group.args.invert = {
             order = 6, type = "toggle", name = "Verlauf invertieren",
@@ -200,13 +204,22 @@ local function GetBorderOptions(name, order, dbKey, isThreeColor)
             }
         }
     end
-
+    
     return group
 end
 
 -- =====================================================================
 -- 5. OPTIONEN
 -- =====================================================================
+local function IsAddonActive(id)
+    if C_AddOns and C_AddOns.IsAddOnLoaded then
+        return C_AddOns.IsAddOnLoaded(id)
+    elseif IsAddOnLoaded then
+        return IsAddOnLoaded(id)
+    end
+    return false
+end
+
 function AUI:InsertOptions()
     E.Options.args.AUI = {
         type = "group",
@@ -233,7 +246,7 @@ function AUI:InsertOptions()
                                 { id = "ElvUI_NutsAndBolts", name = "Nuts & Bolts" }
                             }
                             for _, p in ipairs(plugins) do
-                                if C_AddOns.IsAddOnLoaded(p.id) then
+                                if IsAddonActive(p.id) then
                                     text = text .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t |cff00ff00" .. p.name .. " (Aktiv)|r\n"
                                 else
                                     text = text .. "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t |cffff0000" .. p.name .. " (Fehlt)|r\n"
@@ -341,7 +354,7 @@ function AUI:InsertOptions()
                             extendedCharacterTooltip = { order = 3, type = "toggle", name = L["Character Stats"] or "Charakter-Infos", width = "full" },
                             extendedProfessionTooltip = { order = 4, type = "toggle", name = L["Profession Stats"] or "Berufe-Infos", width = "full" },
                             extendedTalentTooltip = { order = 5, type = "toggle", name = L["Talent Stats"] or "Talent-Infos", width = "full" },
-                            extendedAdventureTooltip = { order = 6, type = "toggle", name = L["Adventure Guide Stats"] or "Abenteuerführer-Infos", width = "full" },
+                            extendedAdventureTooltip = isRetail and { order = 6, type = "toggle", name = L["Adventure Guide Stats"] or "Abenteuerführer-Infos", width = "full" } or nil,
                             extendedLFDTooltip = { order = 7, type = "toggle", name = L["Group Finder Stats"] or "Gruppensuche-Infos", width = "full" },
                             
                             appearanceGroup = {
@@ -400,16 +413,12 @@ function AUI:InsertOptions()
                         order = 20, type = "group", name = L["Icon Effects"] or "Icon-Effekte",
                         args = {
                             headerGlows = { order = 1, type = "header", name = L["Notifications"] or "Benachrichtigungen" },
-                            
                             talentGlow = { order = 2, type = "toggle", name = L["Talent Glow"] or "Talente", width = 1.0, disabled = function() return not E.db.AUI.microbar.glowEnable end },
-                            vaultGlow = { order = 3, type = "toggle", name = L["Vault Glow"] or "Schatzkammer", width = 1.0, disabled = function() return not E.db.AUI.microbar.glowEnable end },
+                            vaultGlow = isRetail and { order = 3, type = "toggle", name = L["Vault Glow"] or "Schatzkammer", width = 1.0, disabled = function() return not E.db.AUI.microbar.glowEnable end } or nil,
                             calendarGlow = { order = 4, type = "toggle", name = L["Calendar Glow"] or "Kalender", width = 1.0, disabled = function() return not E.db.AUI.microbar.glowEnable end },
-                            
-                            collectionsGlow = { order = 5, type = "toggle", name = L["Collections Glow"] or "Sammlungen", width = 1.5, disabled = function() return not E.db.AUI.microbar.glowEnable end },
+                            collectionsGlow = isRetail and { order = 5, type = "toggle", name = L["Collections Glow"] or "Sammlungen", width = 1.5, disabled = function() return not E.db.AUI.microbar.glowEnable end } or nil,
                             mailGlow = { order = 6, type = "toggle", name = L["Mail Glow"] or "Post", width = 1.0, disabled = function() return not E.db.AUI.microbar.glowEnable end },
-                            
                             spacer1 = { order = 7, type = "description", name = "\n", width = "full" },
-
                             glowEnable = {
                                 order = 8, type = "toggle", name = "|cff00ffd2" .. (L["Enable Glow Effects"] or "Alle Leuchteffekte aktivieren") .. "|r",
                                 width = 1.2,
@@ -422,9 +431,7 @@ function AUI:InsertOptions()
                                 get = function() return E.db.AUI.microbar.glowType or "pixel" end,
                                 set = function(_, v) E.db.AUI.microbar.glowType = v; if AUI.UpdateIcons then AUI:UpdateIcons() end end,
                             },
-
                             spacer2 = { order = 10, type = "description", name = "\n", width = "full" },
-
                             mailColorEnable = { order = 11, type = "toggle", name = L["Colorize on Mail"] or "Färben bei Post", width = 1.2 },
                             mailColor = { 
                                 order = 12, type = "color", name = L["Color"] or "Farbe", width = 0.5,
@@ -432,7 +439,6 @@ function AUI:InsertOptions()
                                 get = function() local t = E.db.AUI.microbar.mailColor; return t.r, t.g, t.b, 1 end,
                                 set = function(_, r, g, b) local t = E.db.AUI.microbar.mailColor; t.r, t.g, t.b = r, g, b; if AUI.UpdateIcons then AUI:UpdateIcons() end end 
                             },
-                            
                             headerAnims = { order = 20, type = "header", name = L["Animations"] or "Animationen" },
                             fisheye = { order = 21, type = "toggle", name = L["Fish-Eye Hover"] or "Fish-Eye Effekt", width = "full" },
                         }
@@ -459,27 +465,21 @@ function AUI:InsertOptions()
                 args = {
                     header = { order = 1, type = "header", name = L["Custom Map Pins"] or "Eigene Karten-Pins" },
                     enablePins = { order = 2, type = "toggle", name = L["Enable Pins"] or "Pins aktivieren", width = "full" },
-                   
                     pinSize = { 
                         order = 3, type = "range", name = L["Pin Size"] or "Pin-Größe", min = 8, max = 30, step = 1,
                         disabled = function() return not E.db.AUI.map.enablePins end 
                     },
-                    
                     spacer = { order = 4, type = "description", name = "\n", width = "full" },  
-                    
                     pinScaleMin = { 
-                        order = 4, type = "range", name = L["Zoom-Out Factor"] or "Zoom-Out Faktor", min = 0.75, max = 1.5, step = 0.05,
+                        order = 5, type = "range", name = L["Zoom-Out Factor"] or "Zoom-Out Faktor", min = 0.75, max = 1.5, step = 0.05,
                         disabled = function() return not E.db.AUI.map.enablePins end 
                     },
                     pinScaleMax = { 
-                        order = 5, type = "range", name = L["Zoom-In Factor"] or "Zoom-In Faktor", min = 0.75, max = 1.5, step = 0.05,
+                        order = 6, type = "range", name = L["Zoom-In Factor"] or "Zoom-In Faktor", min = 0.75, max = 1.5, step = 0.05,
                         disabled = function() return not E.db.AUI.map.enablePins end 
                     },
                 }
             },
-            -- =================================================================
-            -- NEUES TAB-MENÜ FÜR EINFÄRBUNGEN
-            -- =================================================================
             coloring = {
                 type = "group", name = L["Coloring"] or "Coloring", order = 4, childGroups = "tab",
                 args = {
@@ -512,7 +512,7 @@ function AUI:InsertOptions()
                                     local t = E.db.AUI.coloring.datatexts.customColor; 
                                     t.r, t.g, t.b = r, g, b; 
                                     if AUI.ColorDatatextFonts then AUI:ColorDatatextFonts() end 
-                                    local DT = E:GetModule('DataTexts'); if DT and DT.LoadDataTexts then DT:LoadDataTexts() end
+                                    local DT = E:GetModule('DataTexts'); if DT and DT.LoadDataTexts then DT:LoadDataTexts() end 
                                 end,
                             },
                             gradientColor = {
@@ -523,7 +523,7 @@ function AUI:InsertOptions()
                                     local t = E.db.AUI.coloring.datatexts.gradientColor; 
                                     t.r, t.g, t.b = r, g, b; 
                                     if AUI.ColorDatatextFonts then AUI:ColorDatatextFonts() end 
-                                    local DT = E:GetModule('DataTexts'); if DT and DT.LoadDataTexts then DT:LoadDataTexts() end
+                                    local DT = E:GetModule('DataTexts'); if DT and DT.LoadDataTexts then DT:LoadDataTexts() end 
                                 end,
                             }
                         }
@@ -554,8 +554,16 @@ function AUI:InsertOptions()
             
             E.Options.args.AUI.args.microbar.args.iconSelection.args["icon"..i] = {
                 order = 10 + (i * 2), type = "select", name = data.name, values = dropValues, width = 1.2,
-                get = function() local val = E.db.AUI.microbar.customIcons[i]; if i == 14 and (not val or val == "") then return "dynamic_a" end return tostring(val or "") end,
-                set = function(_, v) if i == 14 and (not v or v == "") then v = "dynamic_a" end E.db.AUI.microbar.customIcons[i] = (v == "") and nil or v; if AUI.UpdateIcons then AUI:UpdateIcons() end end,
+                get = function() 
+                    local val = E.db.AUI.microbar.customIcons[i]
+                    if data.blizzBtn == "AUI_CalendarButton" and (not val or val == "") then return "dynamic_a" end 
+                    return tostring(val or "") 
+                end,
+                set = function(_, v) 
+                    if data.blizzBtn == "AUI_CalendarButton" and (not v or v == "") then v = "dynamic_a" end 
+                    E.db.AUI.microbar.customIcons[i] = (v == "") and nil or v
+                    if AUI.UpdateIcons then AUI:UpdateIcons() end 
+                end,
             }
             E.Options.args.AUI.args.microbar.args.iconSelection.args["color"..i] = {
                 order = 10 + (i * 2) + 1, type = "color", name = "", width = 0.2, disabled = function() return E.db.AUI.microbar.colorAll end, 
@@ -570,13 +578,9 @@ end
 -- 6. INITIALISIERUNG
 -- =====================================================================
 function AUI:Initialize()
-    -- 1. Lade Defaults in die aktive DB, falls sie fehlen
     E.db.AUI = E.db.AUI or {}
     InsertDefaults(E.db.AUI, P.AUI)
-
-    -- 2. Hooke Profil-Updates von ElvUI (Zwingend für Profil-Wechsel!)
     hooksecurefunc(E, "UpdateAll", function() AUI:ProfileUpdate() end)
-
     EP:RegisterPlugin(addonName, AUI.InsertOptions)
     
     if E.db.AUI.microbar.enable and E.db.actionbar and E.db.actionbar.microbar and E.db.actionbar.microbar.enabled then
@@ -591,7 +595,6 @@ function AUI:Initialize()
         end
     end)
     
-    -- 3. Farben bei Addon-Start initialisieren
     E:Delay(3, function()
         if AUI.UpdateBorderColors then AUI:UpdateBorderColors() end
         if AUI.ColorDatatextFonts then AUI:ColorDatatextFonts() end

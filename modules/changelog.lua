@@ -5,6 +5,7 @@ local AUI = E:GetModule('A-UI')
 -- ENGLISCHER CHANGELOG (Standard / Fallback)
 -- ==========================================
 AUI.Changelog_enUS = [[
+- New: Added compatibility with WOW TBCC Anniversary Edition
 - New: Map pins for Silvermoon
 - New: Info page with Changelog, FAQ, and Credits
 - New: Tooltips for Calendar, (new)Mail, SystemMenu, Character, Tradeskills, Talents, Guild, Adventure Guide
@@ -16,6 +17,7 @@ AUI.Changelog_enUS = [[
 -- DEUTSCHER CHANGELOG
 -- ==========================================
 AUI.Changelog_deDE = [[
+- Neu: Kompatibilität mit WOW TBCC Anniversary Edition hinzugefügt
 - Neu: Map-Pins für Silbermond
 - Neu: Info-Seite mit Changelog, FAQ und Credits hinzugefügt
 - Neu: Tooltips für Kalender, (neue) Post, Systemmenü, Charakter, Handwerksfertigkeiten, Talente, Gilde, Abenteuerführer

@@ -1,25 +1,33 @@
 local E, L, V, P, G = unpack(ElvUI)
 local AUI = E:GetModule('A-UI')
+local addonName = "ElvUI_A-UI"
 
-local addonName = "ElvUI_A-UI" 
+local function GetSafeAddOnVersion()
+    if C_AddOns and C_AddOns.GetAddOnMetadata then
+        return C_AddOns.GetAddOnMetadata(addonName, "Version")
+    elseif GetAddOnMetadata then
+        return GetAddOnMetadata(addonName, "Version")
+    end
+    return "1.0.1"
+end
 
 local function CreateInfoTab()
     if not E.Options.args.AUI then return end
-
-    -- Version live aus der .toc auslesen
-    local currentVersion = C_AddOns.GetAddOnMetadata(addonName, "Version") or "Unknown"
+    
+    -- Version sicher live aus der .toc auslesen
+    local currentVersion = GetSafeAddOnVersion() or "1.0.1"
     
     -- Automatische Spracherkennung für den Changelog-Text
     local locale = GetLocale()
     local changelogText = AUI.Changelog_enUS
-    if locale == "deDE" then
+    if locale == "deDE" and AUI.Changelog_deDE then
         changelogText = AUI.Changelog_deDE
     end
     
     -- Untertitel und Header-Grafik zusammenbauen
     local subtitleText = L["AUI_SUBTITLE"] or "A-UI ist eine Sammlung von convenience Addons."
     local headerString = string.format("|TInterface\\AddOns\\ElvUI_A-UI\\media\\A-UI.tga:32:32:0:0|t  |cff00ffd2A-UI Version %s by Ahrok|r\n\n%s", currentVersion, subtitleText)
-
+    
     E.Options.args.AUI.args.infoTab = {
         order = 100,
         type = "group",
@@ -40,7 +48,7 @@ local function CreateInfoTab()
                 width = "full",
             },
             spacer2 = { order = 5, type = "description", name = " ", width = "full" },
-
+            
             -- 3. F.A.Q.
             faqHeader = { order = 6, type = "header", name = L["F.A.Q. (Frequently Asked Questions)"] or "F.A.Q." },
             faqDesc1 = {
@@ -54,7 +62,7 @@ local function CreateInfoTab()
                 width = "full",
             },
             spacer3 = { order = 9, type = "description", name = " ", width = "full" },
-
+            
             -- 4. CHANGELOG
             changelogHeader = { order = 10, type = "header", name = L["Changelog"] or "Changelog" },
             changelogDesc = {
@@ -70,7 +78,7 @@ local function CreateInfoTab()
                 order = 14, type = "input", width = "full",
                 name = "Tukui Community",
                 get = function() return "https://www.tukui.org/" end,
-                set = function() end, -- Machts Read-Only! So kann man den Link zwar markieren & kopieren, aber nicht versehentlich überschreiben
+                set = function() end,
             }
         }
     }

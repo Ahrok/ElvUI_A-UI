@@ -1,341 +1,380 @@
 local E = unpack(ElvUI)
-
--- ENGLISCH (Standard / Fallback)
 local L = E.Libs.ACL:NewLocale("ElvUI", "enUS", true, true)
-if not L then return end
 
-L["Visibility"] = "Visibility"
-L["Show on Mouseover"] = "Show on Mouseover"
-L["Macro Conditionals"] = "Macro Conditionals"
-L["Show Mail Button"] = "Show Mail Button"
-L["Hide if Empty"] = "Hide if Empty"
-L["Hides the mail button if there is no new mail."] = "Hides the mail button if there is no new mail."
-L["Show Calendar Button"] = "Show Calendar Button"
+-- =====================================================================
+-- 1. GENERAL, INFO & CHANGELOG
+-- =====================================================================
+L["AUI_SUBTITLE"] = "A-UI is a lightweight convenience and quality-of-life plugin collection for ElvUI."
+L["AUI_CREDITS_TEXT"] = "A huge thank you goes to the Tukui & ElvUI community, all addon developers, and everyone testing and providing feedback!"
+L["Info & Help"] = true
+L["Credits & Inspiration"] = true
+L["F.A.Q. (Frequently Asked Questions)"] = true
+L["Question: How do I move the microbar?"] = true
+L["Answer: Open the ElvUI toggle anchors mode and move the 'A-UI Microbar' anchor."] = true
+L["Question: Why are some tooltips missing?"] = true
+L["Answer: Make sure you have enabled the extended tooltips in the microbar options."] = true
+L["Changelog"] = true
+L["No changelog text found."] = true
 
-L["Icon Effects"] = "Icon Effects"
-L["Icon Selection"] = "Icon Selection"
-L["Colors"] = "Colors"
-L["Desaturate All"] = "Desaturate All"
-L["Color All"] = "Color All"
-L["Global Color"] = "Global Color"
-L["Custom Color"] = "Custom Color"
+-- =====================================================================
+-- 2. INSTALLER & PROFILE SETUP
+-- =====================================================================
+L["Welcome to A-UI"] = true
+L["Thank you for choosing A-UI!"] = true
+L["This short setup will configure your interface and ensure all required plugins are present."] = true
+L["Click 'Continue' below to proceed, or 'Close' to abort."] = true
+L["System and Plugin Check"] = true
+L["A-UI uses synergies with other ElvUI plugins. Here is the status of your system:"] = true
+L[" (Installed & Active)"] = true
+L[" (Missing - Recommended!)"] = true
+L["Don't worry: If plugins are missing, A-UI will automatically adjust the layout to prevent errors."] = true
+L["Layout Installation"] = true
+L["Click the button below to install the A-UI main profile."] = true
+L["Profile tags are calculated live and adjusted to your installed addons."] = true
+L["Install Layout"] = true
+L["Installation Complete"] = true
+L["Your A-UI layout has been successfully configured!"] = true
+L["All supported plugins have been considered and your interface is now ready for Midnight."] = true
+L["All supported plugins have been considered and your interface is now ready for TBC Classic."] = true
+L["Have fun and good loot!"] = true
+L["Close"] = true
+L["Installation"] = true
 
-L["Notifications"] = "Notifications (Glows)"
-L["Enable Glow Effects"] = "Enable Glow Effects"
-L["Talent Glow"] = "Talents"
-L["Vault Glow"] = "Great Vault"
-L["Calendar Glow"] = "Calendar Invites"
-L["Collections Glow"] = "New Mounts/Pets"
-L["Mail Glow"] = "New Mail"
-L["Global Glow Effect"] = "Glow Effect (All)"
-L["Pixel Glow"] = "Pixel Glow"
-L["AutoCast Glow"] = "AutoCast Glow"
-L["Blizzard Standard"] = "Blizzard Standard"
-L["Colorize on Mail"] = "Colorize on Mail"
+-- =====================================================================
+-- 3. OPTIONS & MICROBAR CONFIGURATION
+-- =====================================================================
+L["Enable"] = true
+L["Size"] = true
+L["Spacing"] = true
+L["Per Row"] = true
+L["Reverse Order"] = true
+L["Main Bar"] = true
+L["Padding"] = true
+L["Backdrop"] = true
+L["Alpha"] = true
+L["Colorize"] = true
+L["Class Color"] = true
+L["Color"] = true
+L["Border"] = true
+L["Buttons"] = true
+L["Visibility"] = true
+L["Show on Mouseover"] = true
+L["Show Mail Button"] = true
+L["Hide if Empty"] = true
+L["Show Calendar Button"] = true
+L["Show Teleport Button"] = true
+L["Macro Conditionals"] = true
+L["Icon Effects"] = true
+L["Notifications"] = true
+L["Talent Glow"] = true
+L["Vault Glow"] = true
+L["Calendar Glow"] = true
+L["Collections Glow"] = true
+L["Mail Glow"] = true
+L["Enable Glow Effects"] = true
+L["Global Glow Effect"] = true
+L["Pixel Glow"] = true
+L["AutoCast Glow"] = true
+L["Blizzard Standard"] = true
+L["Colorize on Mail"] = true
+L["Animations"] = true
+L["Fish-Eye Hover"] = true
+L["Icon Selection"] = true
+L["Colors"] = true
+L["Desaturate All"] = true
+L["Color All"] = true
+L["Icon Customization"] = true
+L["Choose icons and individual colors below."] = true
+L["Default"] = true
+L["Export"] = true
+L["Import"] = true
+L["Profile: "] = true
+L["Copy the string with Ctrl+C:"] = true
+L["1. Paste the profile string here (Ctrl+V):"] = true
+L["Cancel"] = true
+L["Warning: LibDeflate not found. Using standard ElvUI export."] = true
+L["Critical Error: Profile could not be converted to a string."] = true
+L["Error: The text field is empty. Please paste a profile string."] = true
+L["Settings were imported into the active profile."] = true
+L["|cffff0000Critical error during import!|r"] = true
+L["The pasted string is invalid, incomplete, or does not originate from A-UI."] = true
+L["Color Mode"] = true
+L["Coloring"] = true
 
-L["Tooltips"] = "Extended Tooltips"
-L["Guild Roster"] = "Show Guild Roster"
-L["System Stats"] = "Show System Stats (FPS/Ping)"
-L["Character Stats"] = "Show Character Stats"
-L["Profession Stats"] = "Show Profession Stats"
-L["Talent Stats"] = "Show Talent Stats"
-L["Adventure Guide Stats"] = "Show Adventure Guide Stats"
-L["Online: "] = "Online: "
-L["more"] = "more"
-L["Home Latency:"] = "Home Latency:"
-L["World Latency:"] = "World Latency:"
-L["Addon Memory:"] = "Addon Memory:"
-L["Local Time:"] = "Local Time:"
-L["Server Time:"] = "Server Time:"
-L["Session:"] = "Session:"
-L["Volume:"] = "Volume:"
+-- =====================================================================
+-- 4. BUTTON LABELS & CURATED ICON PRESETS
+-- =====================================================================
+L["Character"] = true
+L["Professions"] = true
+L["Talents"] = true
+L["Spellbook"] = true
+L["Achievements"] = true
+L["Questlog"] = true
+L["Housing"] = true
+L["Guild"] = true
+L["Collections"] = true
+L["LFD"] = true
+L["Group Finder"] = true
+L["Store"] = true
+L["Adventure"] = true
+L["Menu"] = true
+L["Help"] = true
+L["Mail"] = true
+L["Calendar"] = true
+L["Teleports"] = true
+L["Alts"] = true
+L["Delves"] = true
 
-L["Show Teleport Button"] = "Show Teleport Button"
-L["Teleports"] = "Teleports"
+L["Human"] = true
+L["Orc"] = true
+L["Anvil & Hammer"] = true
+L["Blue Book"] = true
+L["Green Book"] = true
+L["Classic (Talent Tree)"] = true
+L["Gears"] = true
+L["Holy"] = true
+L["Chalice"] = true
+L["Amulet"] = true
+L["Scroll"] = true
+L["Map"] = true
+L["Sealed Parchment"] = true
+L["Open Parchment"] = true
+L["Golden Key"] = true
+L["Silver Key"] = true
+L["Tavern Sign"] = true
+L["Handshake"] = true
+L["Guild Shield"] = true
+L["Banner"] = true
+L["Pet Paw"] = true
+L["Gryphon"] = true
+L["Wyvern"] = true
+L["Shield"] = true
+L["PvP (Swords)"] = true
+L["Group Search"] = true
+L["Gold Coin"] = true
+L["Copper Coins"] = true
+L["Gold Sack"] = true
+L["Compass & Map"] = true
+L["Spyglass"] = true
+L["Journal"] = true
+L["Yellow Gear"] = true
+L["Wrench"] = true
+L["Punch Card"] = true
+L["Envelope"] = true
+L["Package"] = true
+L["Red"] = true
+L["Blue"] = true
+L["Portal"] = true
+L["Curio"] = true
+L["Masks"] = true
+L["Question Mark"] = true
 
-L["Hearthstones"] = "Hearthstones"
-L["Toys"] = "Toys"
-L["Mage Teleports"] = "Mage Teleports"
-L["Mage Portals"] = "Mage Portals"
-L["No items found."] = "No items found."
-L["Bind Location"] = "Bind Location:"
-L["Cooldowns"] = "Cooldowns:"
-
--- GRUPPENSUCHE STATS
-L["Type"] = "Type"
-L["Owned"] = "Owned"
-L["Earned"] = "Earned"
-L["Source"] = "Source"
-L["Catalyst Charges:"] = "Catalyst Charges:"
-L["Group Finder"] = "Group Finder"
-L["PvE Crests:"] = "PvE Crests:"
-L["Adventurer's Crest:"] = "Adventurer's Crest:"
-L["Veteran's Crest:"] = "Veteran's Crest:"
-L["Champion's Crest:"] = "Champion's Crest:"
-L["Hero's Crest:"] = "Hero's Crest:"
-L["Mythic Crest:"] = "Mythic Crest:"
-L["PvP Currencies:"] = "PvP Currencies:"
-L["Honor:"] = "Honor:"
-L["Conquest:"] = "Conquest:"
-L["Bloody Tokens:"] = "Bloody Tokens:"
-L["No Crests found."] = "No Crests found."
-
--- WAPPEN & PVP HERKUNFT
-L["Mythic, +9"] = "Mythic, +9"
-L["Heroic, +4"] = "Heroic, +4"
-L["Normal, +2"] = "Normal, +2"
-L["LFR"] = "LFR"
-L["World Content"] = "World Content"
-L["Unrated PvP"] = "Unrated PvP"
-L["Rated PvP"] = "Rated PvP"
-L["War Mode"] = "War Mode"
-
--- ABENTEUERFÜHRER STATS
-L["Monthly Progress:"] = "Monthly Progress:"
-L["Trader's Tender:"] = "Trader's Tender:"
-L["Midnight Factions:"] = "Midnight Factions:"
-L["Renown"] = "Renown"
-L["Level"] = "Level"
-L["Season Progress:"] = "Season Progress:"
-L["Delver's Journey:"] = "Delver's Journey:"
-L["Bounty Hunt Season:"] = "Bounty Hunt Season:"
-L["Currencies:"] = "Currencies:"
-L["Bountiful Coins:"] = "Bountiful Coins:"
-L["Coffer Key Shards:"] = "Coffer Key Shards:"
-L["Restored Coffer Key:"] = "Restored Coffer Key:"
-L["This Week"] = "this week"
-L["Bountiful Delves (Active):"] = "Bountiful Delves (Active):"
-L["None (or all completed)"] = "None (or all completed)"
-
-L["Collegiate Calamity"] = "Collegiate Calamity"
-L["The Grudge Pit"] = "The Grudge Pit"
-L["Sunkiller Sanctum"] = "Sunkiller Sanctum"
-L["Shadowguard Point"] = "Shadowguard Point"
-L["Atal'Aman"] = "Atal'Aman"
-L["The Gulf of Memory"] = "The Gulf of Memory"
-L["The Shadow Enclave"] = "The Shadow Enclave"
-L["Twilight Crypts"] = "Twilight Crypts"
-
--- CHARAKTER STATS
-L["Item Level:"] = "Item Level:"
-L["Durability:"] = "Durability:"
-
--- BERUFE
-L["No professions learned."] = "No professions learned."
+-- =====================================================================
+-- 5. TOOLTIPS (MICROBAR)
+-- =====================================================================
+L["Guild Roster"] = true
+L["System Stats"] = true
+L["Character Stats"] = true
+L["Profession Stats"] = true
+L["Talent Stats"] = true
+L["Group Finder Stats"] = true
+L["Adventure Guide Stats"] = true
 L["Primary Professions"] = "Primary Professions:"
 L["Secondary Professions"] = "Secondary Professions:"
+L["No professions learned."] = "No professions learned."
+L["Primary Professions of %s"] = "Primary Professions of %s"
+L["No primary professions learned."] = "No primary professions learned."
+L["Current Specialization:"] = true
+L["Active Build:"] = true
+L["Loot Specialization:"] = true
+L["Current Specialization"] = true
+L["Talent Distribution (TBC):"] = "Talent Distribution (TBC):"
+L["|cffffffff%d|r Points"] = "|cffffffff%d|r Points"
+L["Available Talent Points: %d"] = "Available Talent Points: %d"
+L["Guild & Communities"] = true
+L["MOTD:"] = true
+L["Online: "] = true
+L["Note"] = true
+L["Zone"] = true
+L["Class & Level"] = true
+L["more"] = true
+L["Item Level:"] = true
+L["Durability:"] = true
+L["New Mail!"] = true
+L["No Mail!"] = true
+L["Mail from:"] = true
+L["Daily Reset"] = "Daily Reset:"
+L["Weekly Reset"] = "Weekly Reset:"
+L["Saved Raids"] = "Saved Raids:"
+L["Saved Dungeons"] = "Saved Dungeons:"
+L["World Bosses"] = "World Bosses:"
+L["Defeated"] = true
+L["Home Latency:"] = true
+L["World Latency:"] = true
+L["Local Time:"] = true
+L["Server Time:"] = true
+L["Session:"] = true
+L["Volume:"] = true
+L["Addon Memory:"] = true
 
--- GILDEN ROSTER
-L["Guild & Communities"] = "Guild & Communities"
-L["Name"] = "Name"
-L["Class & Level"] = "Class & Level"
-L["Note"] = "Note"
-L["Zone"] = "Zone"
-L["MOTD:"] = "Message of the Day:"
+-- =====================================================================
+-- 6. TELEPORTER MODULE
+-- =====================================================================
+L["Hearthstones"] = "Hearthstones & Items"
+L["Toys"] = "Toys"
+L["Engineering"] = "Engineering & Portals"
+L["Racial Abilities"] = "Racial Abilities"
+L["Death Knight"] = true
+L["Druid"] = true
+L["Monk"] = true
+L["Shaman"] = true
+L["Mage Teleports"] = "Mage Teleports"
+L["Mage Portals"] = "Mage Portals"
+L["Bind Location"] = "Bind Location: "
+L["Cooldowns"] = "Cooldowns:"
+L["No items found."] = "No items found."
 
--- KALENDER LOCKOUTS
-L["Saved Raids"] = "Saved Raids"
-L["Saved Dungeons"] = "Saved Instance(s)"
-L["World Bosses"] = "World Bosses"
-L["Defeated"] = "Defeated"
+-- =====================================================================
+-- 7. TBC CLASSIC CURRENCIES & BADGES
+-- =====================================================================
+L["TBC PvE & PvP Badges:"] = "TBC PvE & PvP Badges:"
+L["Badge of Justice"] = "Badge of Justice"
+L["Honor Points"] = "Honor Points"
+L["Arena Points"] = "Arena Points"
+L["Battleground Marks:"] = "Battleground Marks:"
+L["Warsong Gulch Mark of Honor"] = "Warsong Gulch Mark of Honor"
+L["Arathi Basin Mark of Honor"] = "Arathi Basin Mark of Honor"
+L["Alterac Valley Mark of Honor"] = "Alterac Valley Mark of Honor"
+L["Eye of the Storm Mark of Honor"] = "Eye of the Storm Mark of Honor"
 
-L["Animations"] = "Animations"
-L["Fish-Eye Hover"] = "Fish-Eye Hover (Pop-Up)"
+-- =====================================================================
+-- 8. RETAIL MIDNIGHT CURRENCIES & DELVES
+-- =====================================================================
+L["Catalyst Charges:"] = true
+L["PvE Crests:"] = true
+L["Type"] = true
+L["Owned"] = true
+L["Earned"] = true
+L["Source"] = true
+L["Mythic"] = true
+L["Hero"] = true
+L["Champion"] = true
+L["Veteran"] = true
+L["Adventurer"] = true
+L["Mythic, +9"] = true
+L["Heroic, +4"] = true
+L["Normal, +2"] = true
+L["LFR"] = true
+L["World Content"] = true
+L["No Crests found."] = true
+L["PvP Currencies:"] = true
+L["Honor"] = true
+L["Conquest"] = true
+L["Bloody Tokens"] = true
+L["Unrated PvP"] = true
+L["Rated PvP"] = true
+L["War Mode"] = true
+L["Currencies:"] = true
+L["Trader's Tender:"] = true
+L["Bountiful Coins:"] = true
+L["Coffer Key Shards:"] = true
+L["Restored Coffer Key:"] = true
+L["This Week"] = "this week"
+L["Bountiful Delves (Active):"] = true
+L["None (or all completed)"] = true
+L["Midnight Factions:"] = true
+L["Renown"] = true
+L["Delve Companion:"] = true
+L["Level"] = true
+L["Season Progress:"] = true
 
-L["Main Bar"] = "Main Bar"
-L["Padding"] = "Padding"
-L["Layout"] = "Layout"
-L["Enable"] = "Enable"
+-- =====================================================================
+-- 9. ALTS DASHBOARD
+-- =====================================================================
+L["Class"] = true
+L["Name"] = true
+L["Realm"] = true
+L["Spec"] = true
+L["Role"] = true
+L["Lvl"] = true
+L["iLvl"] = true
+L["Avg. iLvl"] = "Ø iLvl"
+L["Playtime"] = true
+L["Badges"] = true
+L["Arena"] = true
+L["PvP Rank"] = true
+L["Notes / Details"] = true
+L["Gold"] = true
+L["Unspent"] = "Unspent"
+L["Unknown"] = "Unknown"
+L["Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r"] = "Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r"
+L["Characters: |cff00ffd2%d|r"] = "Characters: |cff00ffd2%d|r"
 
-L["Buttons"] = "Buttons"
-L["Size"] = "Size"
-L["Spacing"] = "Spacing"
-L["Per Row"] = "Per Row"
-L["Reverse Order"] = "Reverse Order"
+-- =====================================================================
+-- 10. DATATEXT & MAP PINS
+-- =====================================================================
+L["Left Click:"] = "Left-Click:"
+L["Toggle Microbar"] = "Toggle Microbar"
+L["Middle Click:"] = "Middle-Click:"
+L["Open Alt Dashboard"] = "Open Alt Dashboard"
+L["Right Click:"] = "Right-Click:"
+L["Open Options"] = "Open Options"
 
-L["Backdrop"] = "Backdrop"
-L["Border"] = "Border"
-L["Alpha"] = "Alpha"
-L["Colorize"] = "Colorize"
-L["Class Color"] = "Class Color"
+L["World Map"] = true
+L["Custom Map Pins"] = true
+L["Enable Pins"] = true
+L["Pin Size"] = true
+L["Zoom-Out Factor"] = true
+L["Zoom-In Factor"] = true
+L["Click to Track"] = "Left-Click to track target"
+L["Tracking"] = "Tracking"
 
-L["Choose icons and individual colors below."] = "Choose icons and individual colors below."
-
-L["New Mail!"] = "New Mail!"
-L["No Mail!"] = "No Mail!"
-L["Character"] = "Character"
-L["Professions"] = "Professions"
-L["Talents"] = "Talents"
-L["Achievements"] = "Achievements"
-L["Questlog"] = "Questlog"
-L["Housing"] = "Housing"
-L["Guild"] = "Guild"
-L["Collections"] = "Collections"
-L["LFD"] = "Group Finder"
-L["Store"] = "Store"
-L["Adventure"] = "Adventure Guide"
-L["Menu"] = "Menu"
-L["Mail"] = "Mail"
-L["Calendar"] = "Calendar"
-
--- DATATEXT
-L["Left Click: Toggle Microbar"] = "Left Click: Toggle Microbar"
-L["Right Click: Open Options"] = "Right Click: Open Options"
-
--- TRANSFER STRINGS
-L["Export"] = "Export"
-L["Import"] = "Import"
-L["Cancel"] = "Cancel"
-L["Profile: "] = "Profile: "
-L["Copy the string with Ctrl+C:"] = "Copy the string with Ctrl+C:"
-L["1. Paste the profile string here (Ctrl+V):"] = "1. Paste the profile string here (Ctrl+V):"
-L["2. Select Target Profile"] = "2. Select Target Profile"
-L["Overwrite existing:"] = "Overwrite existing:"
-L["OR Create new profile:"] = "OR Create new profile:"
-L["Warning: LibDeflate not found. Using standard ElvUI export."] = "Warning: LibDeflate not found. Using standard ElvUI export."
-L["Critical Error: Profile could not be converted to a string."] = "Critical Error: Profile could not be converted to a string."
-L["Error: The text field is empty. Please paste a profile string."] = "Error: The text field is empty. Please paste a profile string."
-L["New profile '%s' was successfully created and loaded."] = "New profile '%s' was successfully created and loaded."
-L["Settings were imported into the active profile."] = "Settings were imported into the active profile."
-L["|cffff0000Critical error during import!|r"] = "|cffff0000Critical error during import!|r"
-L["The pasted string is invalid, incomplete, or does not originate from A-UI."] = "The pasted string is invalid, incomplete, or does not originate from A-UI."
-L["Please check if you copied the entire string (Ctrl+A, then Ctrl+C)."] = "Please check if you copied the entire string (Ctrl+A, then Ctrl+C)."
-
--- INFO TAB
-L["Info & Help"] = "Info & Help"
-L["Credits & Inspiration"] = "Credits & Inspiration"
-L["Current Version:"] = "Current Version:"
-L["No changelog text found."] = "No changelog text found. Please check changelog.lua!"
-L["AUI_CREDITS_TEXT"] = "A huge thank you to the following addon authors whose work inspired A-UI:\n\n• Blinkii (ElvUI mMediaTag & Tools)\n• Simpy, Luckyone, Merathilis, Repooc, Elv, Tukz (ElvUI)"
-L["F.A.Q. (Frequently Asked Questions)"] = "F.A.Q. (Frequently Asked Questions)"
-L["Question: How do I move the microbar?"] = "Question: How do I move the microbar?"
-L["Answer: Open the ElvUI toggle anchors mode and move the 'A-UI Microbar' anchor."] = "Answer: Open the ElvUI toggle anchors mode and move the 'A-UI Microbar' anchor."
-L["Question: Why are some tooltips missing?"] = "Question: Why are some tooltips missing?"
-L["Answer: Make sure you have enabled the extended tooltips in the microbar options."] = "Answer: Make sure you have enabled the extended tooltips in the microbar options."
-L["Changelog"] = "Changelog"
-L["AUI_SUBTITLE"] = "A-UI is a collection of convenience addons."
-
--- Map settings
-L["World Map"] = "World Map"
-L["Custom Map Pins"] = "Silvermoon Map Pins"
-L["Enable Pins"] = "Enable Pins"
-L["Pin Size"] = "General Pin Size"
-L["Zoom-Out Factor"] = "Zoom-Out Factor"
-L["Zoom-In Factor"] = "Zoom-In Factor"
-
-L["Artisans Consortium"] = "Artisans Consortium"
-L["Consortium Desc"] = "Work Orders, Renown Quartermaster & Questgivers"
+L["Aldor Bank"] = "Bank of the Aldor"
+L["Aldor Bank Desc"] = "Bank located in Aldor Tier"
+L["Scryers Bank"] = "Bank of the Scryers"
+L["Scryers Bank Desc"] = "Bank located on the Scryer's Tier"
+L["Aldor Inn"] = "Aldor Inn"
+L["Aldor Inn Desc"] = "Inn located in Aldor Tier"
+L["Scryers Inn"] = "Scryer's Inn"
+L["Scryers Inn Desc"] = "Inn located on Scryer's Tier"
+L["Flight Master"] = "Flight Master"
+L["Flight Master Desc"] = "Flight Master & Gryphons"
+L["Capital Portals"] = "Capital Portals"
+L["Capital Portals Desc"] = "Portals to Orgrimmar, Stormwind, etc."
+L["Alchemy Lab"] = "Alchemy Lab"
+L["Alchemy Lab Desc"] = "Special Alchemy Lab in Shattrath"
+L["Blacksmithing / Mining"] = "Blacksmithing / Mining"
+L["Blacksmithing Desc"] = "Forge & Anvil"
+L["Jewelcrafting"] = "Jewelcrafting"
+L["Jewelcrafting Desc"] = "Jewelcrafter & Supplies"
+L["Leatherworking"] = "Leatherworking"
+L["Leatherworking Desc"] = "Leatherworking & Skinning"
 L["Bank of Silvermoon"] = "Bank of Silvermoon"
-L["Bank Desc"] = "Local Banker & Guild Bank"
+L["Bank Desc"] = "Royal Bank Vault"
 L["Auction House"] = "Auction House"
-L["Auction House Desc"] = "Auctioneer"
+L["Auction House Desc"] = "Bazaar Auction House"
 L["Inn"] = "Inn"
-L["Inn Desc"] = "Innkeeper"
-L["Heirlooms & Transmog"] = "Heirlooms & Transmog"
-L["Heirloom Desc"] = "Heirloom Vendor & Timewarped Badge Vendor"
-L["Item Upgrade"] = "Item Upgrade"
-L["Upgrade Desc"] = "Upgrade items and crests"
+L["Inn Desc"] = "Innkeeper & Rest"
+L["Orb of Translocation"] = "Orb of Translocation"
+L["Orb Desc"] = "Teleport to Undercity"
 L["Alchemy"] = "Alchemy"
 L["Blacksmithing"] = "Blacksmithing"
 L["Enchanting"] = "Enchanting"
 L["Engineering"] = "Engineering"
-L["Inscription"] = "Inscription"
-L["Jewelcrafting"] = "Jewelcrafting"
-L["Leatherworking"] = "Leatherworking & Skinning"
 L["Tailoring"] = "Tailoring"
 L["Mining"] = "Mining"
 L["Herbalism"] = "Herbalism"
-L["Profession Desc"] = "Trainer & Crafting Supplies"
+L["Inscription"] = "Inscription"
+L["Profession Desc"] = "Trainer & Supplies"
+L["Artisans Consortium"] = "Artisan's Consortium"
+L["Consortium Desc"] = "Work Orders & Profession Hub"
+L["Heirlooms & Transmog"] = "Heirlooms & Transmog"
+L["Heirloom Desc"] = "Transmogrifier & Heirloom Vendor"
+L["Item Upgrade"] = "Item Upgrade"
+L["Upgrade Desc"] = "Upgrade Gear & Crests"
 L["Stable Master"] = "Stable Master"
-L["Stable Desc"] = "Manage your pets"
-
-L["Click to Track"] = "Left-Click to track target"
-L["Tracking"] = "Now tracking"
-L["Catalyst"] = "Manaflux Catalyst"
-L["Catalyst Desc"] = "Transform your equipment into powerful class set pieces here."
-
-L["Delve Hub"] = "Delve Headquarters (Valeera)"
-L["Delve Hub Desc"] = "Speak with Valeera Sanguinar to manage your Delve journey and activate companion upgrades."
-
--- Installer
-L["Welcome to A-UI"] = "Welcome to A-UI"
-L["Thank you for choosing A-UI!"] = "Thank you for choosing A-UI!"
-L["This short setup will configure your interface and ensure all required plugins are present."] = "This short setup will configure your interface and ensure all required plugins are present."
-L["Click 'Continue' below to proceed, or 'Close' to abort."] = "Click 'Continue' below to proceed, or 'Close' to abort."
-
-L["System and Plugin Check"] = "System and Plugin Check"
-L["A-UI uses synergies with other ElvUI plugins. Here is the status of your system:"] = "A-UI uses synergies with other ElvUI plugins. Here is the status of your system:"
-L[" (Installed & Active)"] = " (Installed & Active)"
-L[" (Missing - Recommended!)"] = " (Missing - Recommended!)"
-L["Don't worry: If plugins are missing, A-UI will automatically adjust the layout to prevent errors."] = "Don't worry: If plugins are missing, A-UI will automatically adjust the layout to prevent errors."
-
-L["Layout Installation"] = "Layout Installation"
-L["Click the button below to install the A-UI main profile."] = "Click the button below to install the A-UI main profile."
-L["Profile tags are calculated live and adjusted to your installed addons."] = "Profile tags are calculated live and adjusted to your installed addons."
-L["Install Layout"] = "Install Layout"
-
-L["Installation Complete"] = "Installation Complete"
-L["Your A-UI layout has been successfully configured!"] = "Your A-UI layout has been successfully configured!"
-L["All supported plugins have been considered and your interface is now ready for Midnight."] = "All supported plugins have been considered and your interface is now ready for Midnight."
-L["Have fun and good loot!"] = "Have fun and good loot!"
-
-L["Close"] = "Close"
-L["Installation"] = "Installation"
-
-L["Racial Abilities"] = "Racial Abilities"
-L["Death Knight"] = "Death Knight"
-L["Druid"] = "Druid"
-L["Monk"] = "Monk"
-L["Shaman"] = "Shaman"
-
--- ==========================================
--- A-UI: Maps & Delves (Tiefen)
--- ==========================================
-L["Maps"] = "Maps"
-L["Delves"] = "Delves"
-L["Show Curios & Banners on Map"] = "Show Curios & Banners on Map"
-L["Shows collected Curios and Banners on the World Map and Delve Minimap."] = "Shows collected Curios and Banners on the World Map and Delve Minimap."
-L["Curio"] = "Curio"
-L["Banner"] = "Banner"
-L["Checkpoint"] = "Checkpoint"
-
--- Delve Dashboard
-L["A-UI Delves Dashboard"] = "A-UI Delves Dashboard"
-L["Statistics"] = "Statistics"
-L["Bountiful Delves (Today)"] = "Bountiful Delves (Today)"
-L["None available / All completed"] = "None available / All completed"
-L["Other Delves"] = "Other Delves"
-L["Total Successful Runs:"] = "Total Successful Runs:"
-L["Total Failed Runs:"] = "Total Failed Runs:"
-L["Deaths in Delves (Account):"] = "Deaths in Delves (Account):"
-L["Curios Found:"] = "Curios Found:"
-L["Banners Found:"] = "Banners Found:"
-L["Best Character (Most Runs):"] = "Best Character (Most Runs):"
-L["Most Played Specialization:"] = "Most Played Specialization:"
-L["Most Played Delve:"] = "Most Played Delve:"
-L["Personal Best Time"] = "Personal Best Time"
-L["Delve & Tier:"] = "Delve & Tier:"
-L["Time:"] = "Time:"
-L["Last Failure"] = "Last Failure"
-L["Character & Spec:"] = "Character & Spec:"
-L["Date:"] = "Date:"
-L["Delver's Journey (Season 1)"] = "Delver's Journey (Season 1)"
-L["Valeera Sanguinar"] = "Valeera Sanguinar"
-L["Select Map..."] = "Select Map..."
-L["Floor"] = "Floor"
-L["Loading Data..."] = "Loading Data..."
-L["Max. Tier:"] = "Max. Tier:"
-L["Attempts:"] = "Attempts:"
-L["Successes:"] = "Successes:"
-L["Fails:"] = "Fails:"
-L["(Active)"] = "(Active)"
-
-L["Share Pins"] = "Share Pins"
-L["Import / Export Pins"] = "Import / Export Pins"
-
--- Coloring (Datatexts)
-L["Coloring"] = "Coloring"
-L["Datatext Labels"] = "Datatext Labels"
-L["Color Mode"] = "Color Mode"
-L["Class Color"] = "Class Color"
-L["Custom Color"] = "Custom Color"
+L["Stable Desc"] = "Pet Stables"
+L["Catalyst"] = "Creation Catalyst"
+L["Catalyst Desc"] = "Convert gear into Tier set pieces"
+L["Delve Hub"] = "Delve Headquarters"
+L["Delve Hub Desc"] = "Valeera & Brann Delve Hub"

@@ -1,26 +1,23 @@
-## Interface: 120005
-## Title: |cff1784d1ElvUI|r |cff00ffd2A-UI|r
-## Notes: Sammlung von Anpassungen für das ElvUI Midnight Interface.
+## Interface: 20504
+## Title: |cff1784d1ElvUI|r |cff00ffd2A-UI|r (TBC)
+## Notes: Sammlung von Anpassungen für das ElvUI Interface in TBC Classic.
 ## Version: 1.0.1
 ## RequiredDeps: ElvUI
 ## Author: Ahrok
 ## DefaultState: enabled
 ## SavedVariables: ElvUI_AUIDB
-## X-Interface: 120001
-## X-ElvUI: 15.10
-## AddonCompartmentFunc: ElvUI_AUI_CompartmentClick
-## IconTexture: Interface\AddOns\ElvUI_A-UI\media\A-UI.tga
+## X-ElvUI: 13.00
 
-#Locales 
+# Locales 
 locales\enUS.lua
 locales\deDE.lua
 
-#Core 
+# Core 
 Core.lua
 Icons.lua
 Features.lua
 
-#modules
+# Modules (TBC-compatible)
 modules\install.lua
 modules\microbar.lua
 modules\tooltips.lua
@@ -29,6 +26,5 @@ modules\changelog.lua
 modules\info.lua
 modules\map.lua
 modules\teleporter.lua
-modules\delves.lua
 modules\coloring.lua
 modules\alts.lua
