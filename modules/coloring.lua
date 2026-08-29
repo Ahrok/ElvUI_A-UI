@@ -19,11 +19,9 @@ end
 
 local function SafeSetGradient(tex, orientation, c1, c2)
     if not tex then return end
-    -- 1. Moderner Client (ColorMixin Objekt)
     local success = pcall(function()
         tex:SetGradient(orientation, C(c1), C(c2))
     end)
-    -- 2. Legacy / Classic Fallback (Raw Numbers)
     if not success then
         pcall(function()
             if tex.SetGradientAlpha then
@@ -34,7 +32,10 @@ local function SafeSetGradient(tex, orientation, c1, c2)
 end
 
 local function CreateBorderTextures(frame, isThreeColor)
-    if not frame.auiGradientBorders then
+    if not frame.auiGradientBorders or (isThreeColor and not frame.auiGradientBorders.topL) or (not isThreeColor and not frame.auiGradientBorders.top) then
+        if frame.auiGradientBorders then
+            for _, tex in pairs(frame.auiGradientBorders) do tex:Hide() end
+        end
         frame.auiGradientBorders = {}
         local t = frame.auiGradientBorders
         local mult = E.mult or 1
@@ -92,7 +93,7 @@ local function ApplyGradientBorder(frame, config, isThreeColor)
     if mode == "CLASS" then
         c1 = E:ClassColor(E.myclass, true); c2 = c1; c3 = c1
     elseif mode == "CUSTOM" then
-        c1 = config.color1; c2 = c1; c3 = c1
+        c1 = config.color1; c2 = config.color2 or c1; c3 = config.color3 or c1
     elseif mode == "GRADIENT" then
         c1 = config.color1; c2 = config.color2; c3 = config.color3 or c2
     elseif mode == "CLASS_GRADIENT" then
@@ -144,6 +145,20 @@ end
 -- =====================================================================
 -- UPDATE CONTROLLER
 -- =====================================================================
+function AUI:UpdateEditBoxColors()
+    local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders
+    local leftChat = db and db.leftChat
+    local editBoxConfig = (leftChat and leftChat.enable and leftChat.colorEditBox) and leftChat or nil
+
+    local numWindows = NUM_CHAT_WINDOWS or 10
+    for i = 1, numWindows do
+        local editBox = _G["ChatFrame"..i.."EditBox"]
+        if editBox then
+            ApplyGradientBorder(editBox, editBoxConfig, false)
+        end
+    end
+end
+
 function AUI:UpdateBorderColors()
     local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders
     if not db then return end
@@ -154,6 +169,10 @@ function AUI:UpdateBorderColors()
     if _G["Minimap"] then ApplyGradientBorder(_G["Minimap"], db.minimap, false) end
     if _G["LeftChatPanel"] then ApplyGradientBorder(_G["LeftChatPanel"], db.leftChat, false) end
     if _G["RightChatPanel"] then ApplyGradientBorder(_G["RightChatPanel"], db.rightChat, false) end
+    
+    if _G["AUI_AltInfoFrame"] then ApplyGradientBorder(_G["AUI_AltInfoFrame"], db.alts, true) end
+
+    AUI:UpdateEditBoxColors()
 end
 
 -- =====================================================================
@@ -264,12 +283,26 @@ function AUI:ColorDatatextFonts()
 end
 
 -- =====================================================================
--- INIT
+-- HOOKS & INIT
 -- =====================================================================
+local function HookChatEditBox()
+    local CH = E:GetModule('Chat')
+    if CH and CH.UpdateEditBoxColor and not CH.auiEditBoxHooked then
+        hooksecurefunc(CH, "UpdateEditBoxColor", function()
+            local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders and E.db.AUI.coloring.borders.leftChat
+            if db and db.enable and db.colorEditBox then
+                AUI:UpdateEditBoxColors()
+            end
+        end)
+        CH.auiEditBoxHooked = true
+    end
+end
+
 local ColorTracker = CreateFrame("Frame")
 ColorTracker:RegisterEvent("PLAYER_ENTERING_WORLD")
 ColorTracker:SetScript("OnEvent", function(self, event)
     self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    HookChatEditBox()
     E:Delay(3, function() 
         AUI:ColorDatatextFonts() 
         AUI:UpdateBorderColors()

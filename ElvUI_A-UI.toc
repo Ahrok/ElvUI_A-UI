@@ -1,7 +1,7 @@
 ## Interface: 120005
 ## Title: |cff1784d1ElvUI|r |cff00ffd2A-UI|r
 ## Notes: Sammlung von Anpassungen für das ElvUI Midnight Interface.
-## Version: 1.0.1
+## Version: 1.2.0
 ## RequiredDeps: ElvUI
 ## Author: Ahrok
 ## DefaultState: enabled

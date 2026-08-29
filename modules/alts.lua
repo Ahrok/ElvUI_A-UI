@@ -8,7 +8,62 @@ AUI.AltSortBy = isRetail and "ilvl" or "level"
 AUI.AltSortAsc = false
 
 -- =====================================================================
--- 0. KONFIGURATION & ICON-LOOKUP FÜR CLASSIC
+-- 0. POPUPS (NOTIZEN & LÖSCHEN)
+-- =====================================================================
+StaticPopupDialogs["AUI_EDIT_ALT_NOTE"] = {
+    text = "|cff00ffd2A-UI:|r " .. (L["Edit Note for %s:"] or "Notiz für %s bearbeiten:"),
+    button1 = ACCEPT,
+    button2 = CANCEL,
+    hasEditBox = true,
+    maxLetters = 45,
+    OnShow = function(self, data)
+        local note = (data and data.charKey and AUI.AltDB and AUI.AltDB.Characters and AUI.AltDB.Characters[data.charKey] and AUI.AltDB.Characters[data.charKey].note) or ""
+        self.editBox:SetText(note)
+        self.editBox:HighlightText()
+    end,
+    OnAccept = function(self, data)
+        local text = self.editBox:GetText() or ""
+        if data and data.charKey and AUI.AltDB and AUI.AltDB.Characters and AUI.AltDB.Characters[data.charKey] then
+            AUI.AltDB.Characters[data.charKey].note = (text ~= "") and text or nil
+            if AUI.UpdateAltUI then AUI:UpdateAltUI() end
+        end
+    end,
+    EditBoxOnEnterPressed = function(self, data)
+        local parent = self:GetParent()
+        local text = self:GetText() or ""
+        if data and data.charKey and AUI.AltDB and AUI.AltDB.Characters and AUI.AltDB.Characters[data.charKey] then
+            AUI.AltDB.Characters[data.charKey].note = (text ~= "") and text or nil
+            if AUI.UpdateAltUI then AUI:UpdateAltUI() end
+        end
+        parent:Hide()
+    end,
+    EditBoxOnEscapePressed = function(self)
+        self:GetParent():Hide()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+StaticPopupDialogs["AUI_DELETE_ALT"] = {
+    text = "|cff00ffd2A-UI:|r " .. (L["Delete %s from Alt Dashboard?"] or "%s wirklich aus dem Dashboard entfernen?"),
+    button1 = YES,
+    button2 = NO,
+    OnAccept = function(self, data)
+        if data and data.charKey and AUI.AltDB and AUI.AltDB.Characters then
+            AUI.AltDB.Characters[data.charKey] = nil
+            if AUI.UpdateAltUI then AUI:UpdateAltUI() end
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+-- =====================================================================
+-- 1. KONFIGURATION & ICON-LOOKUP FÜR CLASSIC
 -- =====================================================================
 local AUI_CONFIG = {
     IlvlEpic = isRetail and 250 or 115,
@@ -56,7 +111,7 @@ local function GetClassicProfessionIcon(name)
 end
 
 -- =====================================================================
--- 1. DYNAMISCHER WÄHRUNGSSCANNER (RETAIL)
+-- 2. DYNAMISCHER WÄHRUNGSSCANNER (RETAIL)
 -- =====================================================================
 local function GetDynamicCurrencyIDs()
     if not isRetail then return {} end
@@ -107,8 +162,51 @@ local function GetDynamicCurrencyIDs()
 end
 
 -- =====================================================================
--- 2. HILFSFUNKTIONEN
+-- 3. HILFSFUNKTIONEN & ROLLEN-ERKENNUNG (CLASSIC HEURISTIK)
 -- =====================================================================
+local function DetectClassicRole(class, t1, t2, t3)
+    if class == "MAGE" or class == "WARLOCK" or class == "ROGUE" or class == "HUNTER" then
+        return "DPS"
+    elseif class == "WARRIOR" then
+        if (t3 or 0) > (t1 or 0) and (t3 or 0) > (t2 or 0) and (t3 or 0) > 0 then
+            return "Tank"
+        else
+            return "DPS"
+        end
+    elseif class == "PALADIN" then
+        if (t1 or 0) >= (t2 or 0) and (t1 or 0) >= (t3 or 0) and (t1 or 0) > 0 then
+            return "Heal"
+        elseif (t2 or 0) >= (t1 or 0) and (t2 or 0) >= (t3 or 0) and (t2 or 0) > 0 then
+            return "Tank"
+        else
+            return "DPS"
+        end
+    elseif class == "PRIEST" then
+        if (t3 or 0) > (t1 or 0) and (t3 or 0) > (t2 or 0) and (t3 or 0) > 0 then
+            return "DPS"
+        else
+            return "Heal"
+        end
+    elseif class == "SHAMAN" then
+        if (t3 or 0) > (t1 or 0) and (t3 or 0) > (t2 or 0) and (t3 or 0) > 0 then
+            return "Heal"
+        else
+            return "DPS"
+        end
+    elseif class == "DRUID" then
+        if (t3 or 0) >= (t1 or 0) and (t3 or 0) >= (t2 or 0) and (t3 or 0) > 0 then
+            return "Heal"
+        elseif (t1 or 0) > (t2 or 0) and (t1 or 0) > (t3 or 0) and (t1 or 0) > 0 then
+            return "DPS"
+        elseif (t2 or 0) > 0 then
+            return "Tank"
+        else
+            return "DPS"
+        end
+    end
+    return "DPS"
+end
+
 local function GetSafeTalentTabInfo(tabIndex)
     if not GetTalentTabInfo then return "-", nil, 0 end
     local ret1, ret2, ret3, ret4, ret5 = GetTalentTabInfo(tabIndex)
@@ -175,7 +273,7 @@ local function GetClassHexColor(class)
 end
 
 -- =====================================================================
--- 3. DATENBANK & TRACKING
+-- 4. DATENBANK & TRACKING
 -- =====================================================================
 function AUI:InitAltDatabase()
     if not _G["ElvUI_AUIDB"] then _G["ElvUI_AUIDB"] = {} end
@@ -229,7 +327,7 @@ local function UpdateCurrentAltInfo()
             if t3 > topPts then topPts = t3; topTree = n3 or "-" end
         end
         specName = (topPts > 0) and string.format("%s (%d/%d/%d)", topTree, t1, t2, t3) or (L["Unspent"] or "Unspent")
-        roleName = "-"
+        roleName = DetectClassicRole(class, t1, t2, t3)
     end
     
     -- Berufe
@@ -287,6 +385,7 @@ local function UpdateCurrentAltInfo()
         ilvl = ilvl,
         spec = specName,
         role = roleName,
+        note = cdb.note,
         p1Name = p1Name, p1Icon = p1Icon, p1Skill = p1Skill, p1Max = p1Max, p1Mod = p1Mod,
         p2Name = p2Name, p2Icon = p2Icon, p2Skill = p2Skill, p2Max = p2Max, p2Mod = p2Mod,
         playedTotal = cdb.playedTotal,
@@ -333,6 +432,7 @@ local function UpdateCurrentAltInfo()
         charEntry.badges = GetItemCount(29434, true) or 0
         charEntry.honor = (GetHonorCurrency and GetHonorCurrency()) or 0
         charEntry.arena = (GetArenaCurrency and GetArenaCurrency()) or 0
+        charEntry.pvpRank = (UnitPVPRank and UnitPVPRank("player")) or 0
     end
     
     AUI.AltDB.Characters[charKey] = charEntry
@@ -401,7 +501,7 @@ end
 AltTracker:SetScript("OnEvent", OnEvent)
 
 -- =====================================================================
--- 4. DAS FRONTEND (DASHBOARD)
+-- 5. FRONTEND (DASHBOARD)
 -- =====================================================================
 local UI = CreateFrame("Frame", "AUI_AltInfoFrame", E.UIParent, "BackdropTemplate")
 UI:SetSize(1480, 500) 
@@ -420,7 +520,7 @@ tinsert(UISpecialFrames, "AUI_AltInfoFrame")
 UI.Title = UI:CreateFontString(nil, "OVERLAY")
 UI.Title:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 18, "SHADOWOUTLINE")
 UI.Title:SetPoint("TOP", UI, "TOP", 0, -15)
-UI.Title:SetText("|cff00ffd2A-UI|r Alts" .. (isRetail and " (Midnight)" or " (TBC Classic)"))
+UI.Title:SetText("|cff00ffd2A-UI|r Alts" .. (isRetail and " (Retail)" or " (TBC Classic)"))
 
 UI.CloseButton = CreateFrame("Button", nil, UI, "UIPanelCloseButton")
 UI.CloseButton:SetPoint("TOPRIGHT", UI, "TOPRIGHT", -4, -4)
@@ -458,7 +558,7 @@ UI.RoleCountText:SetPoint("BOTTOMLEFT", UI, "BOTTOMLEFT", 25, 15)
 UI.RoleCountText:SetText("")
 
 -- =====================================================================
--- 5. SORTIERUNG & HEADER
+-- 6. SORTIERUNG & HEADER
 -- =====================================================================
 local function CreateHeaderBtn(text, width, offsetX, sortKey)
     local btn = CreateFrame("Button", nil, UI.HeaderFrame, "BackdropTemplate")
@@ -495,10 +595,10 @@ local hName    = CreateHeaderBtn(L["Name"] or "Name", 110, 50, "name")
 local hRealm   = CreateHeaderBtn(L["Realm"] or "Realm", 110, 160, "realm")
 local hGuild   = CreateHeaderBtn(L["Guild"] or "Guild", 130, 270, "guild")
 local hSpec    = CreateHeaderBtn(isRetail and (L["Spec"] or "Spec") or (L["Talents"] or "Talents"), 110, 400, "spec")
-local hRole    = CreateHeaderBtn(isRetail and (L["Role"] or "Role") or "-", 40, 510, isRetail and "role" or "none")
-local hLvl     = CreateHeaderBtn(L["Lvl"] or "Lvl", 35, 550, "level")
-local hGS      = CreateHeaderBtn(isRetail and (L["Avg. iLvl"] or "Ø iLvl") or (L["iLvl"] or "iLvl"), 45, 585, "ilvl")
-local hProf    = CreateHeaderBtn(L["Professions"] or "Professions", 100, 630, "none")
+local hRole    = CreateHeaderBtn(L["Role"] or "Role", 45, 510, "role")
+local hLvl     = CreateHeaderBtn(L["Lvl"] or "Lvl", 35, 555, "level")
+local hGS      = CreateHeaderBtn(isRetail and (L["Avg. iLvl"] or "Ø iLvl") or (L["iLvl"] or "iLvl"), 45, 590, "ilvl")
+local hProf    = CreateHeaderBtn(L["Professions"] or "Professions", 95, 635, "none")
 local hPlayed  = CreateHeaderBtn(L["Playtime"] or "Playtime", 65, 730, "played")
 
 local hCol1, hCol2, hCol3, hCol4, hCol5
@@ -512,7 +612,7 @@ else
     hCol1 = CreateHeaderBtn(L["Badges"] or "Badges", 70, 795, "badges")
     hCol2 = CreateHeaderBtn(L["Honor"] or "Honor", 80, 865, "honor")
     hCol3 = CreateHeaderBtn(L["Arena"] or "Arena", 80, 945, "arena")
-    hCol4 = CreateHeaderBtn(L["PvP Rank"] or "PvP Rank", 100, 1025, "none")
+    hCol4 = CreateHeaderBtn(L["PvP Rank"] or "PvP Rank", 100, 1025, "pvpRank")
     hCol5 = CreateHeaderBtn(L["Notes / Details"] or "Notes / Details", 160, 1125, "none")
 end
 
@@ -522,7 +622,7 @@ local hDel  = CreateHeaderBtn("X", 20, 1385, "none")
 local altLines = {}
 
 -- =====================================================================
--- 6. UI UPDATE LOGIK
+-- 7. UI UPDATE LOGIK
 -- =====================================================================
 function AUI:UpdateAltUI()
     if not AUI.AltDB or not AUI.AltDB.Characters then return end
@@ -580,9 +680,10 @@ function AUI:UpdateAltUI()
     for i, data in ipairs(sortedAlts) do
         local line = altLines[i]
         if not line then
-            line = CreateFrame("Frame", nil, UI.ScrollChild, "BackdropTemplate")
+            line = CreateFrame("Button", nil, UI.ScrollChild, "BackdropTemplate")
             line:SetSize(1410, 26)
             line:SetTemplate("Transparent")
+            line:RegisterForClicks("RightButtonUp")
             
             line.factionIcon = line:CreateTexture(nil, "ARTWORK")
             line.factionIcon:SetSize(16, 16)
@@ -624,25 +725,25 @@ function AUI:UpdateAltUI()
             line.role = line:CreateFontString(nil, "OVERLAY")
             line.role:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
             line.role:SetPoint("LEFT", line, "LEFT", 510, 0)
-            line.role:SetWidth(40)
+            line.role:SetWidth(45)
             line.role:SetJustifyH("CENTER")
             
             line.level = line:CreateFontString(nil, "OVERLAY")
             line.level:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
-            line.level:SetPoint("LEFT", line, "LEFT", 550, 0)
+            line.level:SetPoint("LEFT", line, "LEFT", 555, 0)
             line.level:SetWidth(35)
             line.level:SetJustifyH("CENTER")
             
             line.ilvl = line:CreateFontString(nil, "OVERLAY")
             line.ilvl:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 14, "NONE")
-            line.ilvl:SetPoint("LEFT", line, "LEFT", 585, 0)
+            line.ilvl:SetPoint("LEFT", line, "LEFT", 590, 0)
             line.ilvl:SetWidth(45)
             line.ilvl:SetJustifyH("CENTER")
             
             line.prof = line:CreateFontString(nil, "OVERLAY")
             line.prof:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
-            line.prof:SetPoint("LEFT", line, "LEFT", 630, 0)
-            line.prof:SetWidth(100)
+            line.prof:SetPoint("LEFT", line, "LEFT", 635, 0)
+            line.prof:SetWidth(95)
             line.prof:SetJustifyH("CENTER")
             
             line.profBtn = CreateFrame("Button", nil, line)
@@ -706,6 +807,34 @@ function AUI:UpdateAltUI()
             line.col5 = line:CreateFontString(nil, "OVERLAY")
             line.col5:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
             line.col5:SetJustifyH("CENTER")
+
+            line.noteBtn = CreateFrame("Button", nil, line)
+            line.noteBtn:SetScript("OnEnter", function(self)
+                local parent = self:GetParent()
+                local key = parent and parent.charKey
+                if key and AUI.AltDB.Characters[key] then
+                    local d = AUI.AltDB.Characters[key]
+                    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+                    GameTooltip:ClearLines()
+                    GameTooltip:AddLine(d.name or "Alt", 1, 1, 1)
+                    if d.note and d.note ~= "" then
+                        GameTooltip:AddLine("|cff00ffd2" .. (L["Notes / Details"] or "Notiz") .. ":|r " .. d.note, 1, 1, 0.8, true)
+                    else
+                        GameTooltip:AddLine("|cff888888" .. (L["No note set."] or "Keine Notiz vorhanden.") .. "|r", 1, 1, 1)
+                    end
+                    GameTooltip:AddLine(" ", 1, 1, 1)
+                    GameTooltip:AddLine("|cffffd100" .. (L["Click to edit note."] or "Klicken, um Notiz zu bearbeiten.") .. "|r", 0.2, 1, 0.2)
+                    GameTooltip:Show()
+                end
+            end)
+            line.noteBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            line.noteBtn:SetScript("OnClick", function(self)
+                local parent = self:GetParent()
+                local key = parent and parent.charKey
+                if key and AUI.AltDB.Characters[key] then
+                    StaticPopup_Show("AUI_EDIT_ALT_NOTE", AUI.AltDB.Characters[key].name or "Alt", nil, { charKey = key })
+                end
+            end)
             
             line.gold = line:CreateFontString(nil, "OVERLAY")
             line.gold:FontTemplate(E.Libs.LSM:Fetch("font", "Expressway"), 13, "NONE")
@@ -724,8 +853,13 @@ function AUI:UpdateAltUI()
             line.delBtn:SetScript("OnClick", function(self)
                 local key = self:GetParent().charKey
                 if key and AUI.AltDB.Characters[key] then
-                    AUI.AltDB.Characters[key] = nil
-                    AUI:UpdateAltUI()
+                    StaticPopup_Show("AUI_DELETE_ALT", AUI.AltDB.Characters[key].name or "Alt", nil, { charKey = key })
+                end
+            end)
+
+            line:SetScript("OnClick", function(self, btn)
+                if btn == "RightButton" and self.charKey and AUI.AltDB.Characters[self.charKey] then
+                    StaticPopup_Show("AUI_EDIT_ALT_NOTE", AUI.AltDB.Characters[self.charKey].name or "Alt", nil, { charKey = self.charKey })
                 end
             end)
             
@@ -747,7 +881,17 @@ function AUI:UpdateAltUI()
         line.realm:SetText(data.realm or "")
         line.guild:SetText(data.guild == "-" and "-" or "<" .. data.guild .. ">")
         line.spec:SetText(data.spec or "-")
-        line.role:SetText("|cff888888" .. (data.role or "-") .. "|r")
+        
+        local roleStr = "-"
+        if data.role == "Tank" then
+            roleStr = "|cff00aaffTank|r"
+        elseif data.role == "Heal" then
+            roleStr = "|cff00ff00Heal|r"
+        elseif data.role == "DPS" then
+            roleStr = "|cffff4444DPS|r"
+        end
+        line.role:SetText(roleStr)
+        
         line.level:SetText(data.level or "?")
         
         local ilvl = data.ilvl or 0
@@ -765,6 +909,7 @@ function AUI:UpdateAltUI()
         line.played:SetText(FormatPlayed(data.played))
         
         if isRetail then
+            line.noteBtn:Hide()
             local ids = GetDynamicCurrencyIDs()
             line.col1:SetPoint("LEFT", line, "LEFT", 795, 0); line.col1:SetWidth(40)
             line.col1:SetText(data.cofferKeys or 0)
@@ -799,10 +944,17 @@ function AUI:UpdateAltUI()
             line.col3:SetText("|cffff8000" .. (data.arena or 0) .. "|r")
             
             line.col4:SetPoint("LEFT", line, "LEFT", 1025, 0); line.col4:SetWidth(100)
-            line.col4:SetText("-")
+            line.col4:SetText((data.pvpRank and data.pvpRank > 0) and ("Rank " .. data.pvpRank) or "-")
             
             line.col5:SetPoint("LEFT", line, "LEFT", 1125, 0); line.col5:SetWidth(160)
-            line.col5:SetText("-")
+            line.noteBtn:SetAllPoints(line.col5)
+            line.noteBtn:Show()
+            
+            if data.note and data.note ~= "" then
+                line.col5:SetText("|cffffff99" .. data.note .. "|r")
+            else
+                line.col5:SetText("|cff666666-|r")
+            end
         end
         
         line.gold:SetText(FormatGold(data.gold or 0))
@@ -821,10 +973,14 @@ function AUI:UpdateAltUI()
     if isRetail then
         local warbandStr = FormatGold(AUI.AltDB.WarbandGold or 0)
         UI.TotalGoldText:SetText(string.format("Playtime (Account): |cffdddddd%s|r   |   Warband Bank: |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r", playedStr, warbandStr, FormatGold(totalGold)))
-        UI.RoleCountText:SetText(string.format("Roles:   |cffddddddTank:|r %d   |   |cffddddddHeal:|r %d   |   |cffddddddDPS:|r %d", countTank, countHeal, countDPS))
+        UI.RoleCountText:SetText(string.format("Roles:   |cff00aaffTank:|r %d   |   |cff00ff00Heal:|r %d   |   |cffff4444DPS:|r %d", countTank, countHeal, countDPS))
     else
         UI.TotalGoldText:SetText(string.format(L["Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r"] or "Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r", playedStr, FormatGold(totalGold)))
-        UI.RoleCountText:SetText(string.format(L["Characters: |cff00ffd2%d|r"] or "Characters: |cff00ffd2%d|r", #sortedAlts))
+        UI.RoleCountText:SetText(string.format("Chars: %d   |   |cff00aaffTank:|r %d   |   |cff00ff00Heal:|r %d   |   |cffff4444DPS:|r %d", #sortedAlts, countTank, countHeal, countDPS))
+    end
+
+    if AUI.UpdateBorderColors then
+        AUI:UpdateBorderColors()
     end
 end
 

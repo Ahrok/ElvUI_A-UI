@@ -18,7 +18,7 @@ L["Changelog"] = "Änderungsprotokoll"
 L["No changelog text found."] = "Kein Änderungsprotokoll gefunden."
 
 -- =====================================================================
--- 2. INSTALLER & PROFIL-EINRICHTUNG
+-- 2. INSTALLER & PROFIL-TRANSFER
 -- =====================================================================
 L["Welcome to A-UI"] = "Willkommen bei A-UI"
 L["Thank you for choosing A-UI!"] = "Vielen Dank, dass du dich für A-UI entschieden hast!"
@@ -29,7 +29,6 @@ L["A-UI uses synergies with other ElvUI plugins. Here is the status of your syst
 L[" (Installed & Active)"] = " (Installiert & Aktiv)"
 L[" (Missing - Recommended!)"] = " (Fehlt - Empfohlen!)"
 L["Don't worry: If plugins are missing, A-UI will automatically adjust the layout to prevent errors."] = "Keine Sorge: Sollten Plugins fehlen, passt A-UI das Layout automatisch an, um Fehler zu vermeiden."
-L["Layout Installation"] = "Layout Installation"
 L["Click the button below to install the A-UI main profile."] = "Klicke auf den Button unten, um das A-UI Hauptprofil einzurichten."
 L["Profile tags are calculated live and adjusted to your installed addons."] = "Profil-Einstellungen und Tags werden live für deine installierten Addons berechnet."
 L["Install Layout"] = "Layout installieren"
@@ -40,9 +39,31 @@ L["All supported plugins have been considered and your interface is now ready fo
 L["Have fun and good loot!"] = "Viel Spaß und guten Loot!"
 L["Close"] = "Schließen"
 L["Installation"] = "Installation"
+L["A-UI Installer"] = "A-UI Installer"
+L["A-UI Installation & Profile"] = "A-UI Installation & Profil"
+L["A-UI uses synergies with the following ElvUI plugins:\n\n"] = "A-UI nutzt Synergien mit folgenden ElvUI-Plugins:\n\n"
+L["Active"] = "Aktiv"
+L["Missing"] = "Fehlt"
+L["Layout Installation"] = "Layout-Installation"
+L["Run the installer to apply the standard A-UI layout to this character (frame positions, custom texts, etc.).\n"] = "Führe den Installer aus, um das Standard A-UI Layout auf diesem Charakter anzuwenden (Fensterpositionen, Custom Texts, etc.).\n"
+L["Start Installer"] = "Installer starten"
+L["Profile Transfer"] = "Profil Transfer"
+L["Here you can export or import only your specific A-UI settings (microbar, icons, tooltips) as text.\n"] = "Hier kannst du nur deine speziellen A-UI Einstellungen (Microbar, Icons, Tooltips) als Text exportieren/importieren.\n"
+L["Export"] = "Exportieren"
+L["Import"] = "Importieren"
+L["Profile: "] = "Profil: "
+L["Copy the string with Ctrl+C:"] = "Kopiere den Text mit Strg+C:"
+L["1. Paste the profile string here (Ctrl+V):"] = "1. Füge den Profil-Text hier ein (Strg+V):"
+L["Cancel"] = "Abbrechen"
+L["Warning: LibDeflate not found. Using standard ElvUI export."] = "Warnung: LibDeflate nicht gefunden. Nutze Standard-Export."
+L["Critical Error: Profile could not be converted to a string."] = "Kritischer Fehler: Profil konnte nicht als Text exportiert werden."
+L["Error: The text field is empty. Please paste a profile string."] = "Fehler: Das Textfeld ist leer. Bitte füge einen Profil-Text ein."
+L["Settings were imported into the active profile."] = "Einstellungen wurden erfolgreich ins aktuelle Profil importiert."
+L["|cffff0000Critical error during import!|r"] = "|cffff0000Kritischer Fehler beim Import!|r"
+L["The pasted string is invalid, incomplete, or does not originate from A-UI."] = "Der eingefügte Text ist ungültig, unvollständig oder stammt nicht von A-UI."
 
 -- =====================================================================
--- 3. OPTIONEN & MICROBAR KONFIGURATION
+-- 3. OPTIONEN, MICROBAR & TOOLTIP-DESIGN
 -- =====================================================================
 L["Enable"] = "Aktivieren"
 L["Size"] = "Größe"
@@ -55,6 +76,7 @@ L["Backdrop"] = "Hintergrund"
 L["Alpha"] = "Transparenz"
 L["Colorize"] = "Einfärben"
 L["Class Color"] = "Klassenfarbe"
+L["Custom Color"] = "Eigene Farbe"
 L["Color"] = "Farbe"
 L["Border"] = "Rahmen"
 L["Buttons"] = "Buttons"
@@ -87,23 +109,51 @@ L["Color All"] = "Alle färben"
 L["Icon Customization"] = "Individuelle Anpassung"
 L["Choose icons and individual colors below."] = "Wähle hier Icons und eigene Farben."
 L["Default"] = "Standard"
-L["Export"] = "Exportieren"
-L["Import"] = "Importieren"
-L["Profile: "] = "Profil: "
-L["Copy the string with Ctrl+C:"] = "Kopiere den Text mit Strg+C:"
-L["1. Paste the profile string here (Ctrl+V):"] = "1. Füge den Profil-Text hier ein (Strg+V):"
-L["Cancel"] = "Abbrechen"
-L["Warning: LibDeflate not found. Using standard ElvUI export."] = "Warnung: LibDeflate nicht gefunden. Nutze Standard-Export."
-L["Critical Error: Profile could not be converted to a string."] = "Kritischer Fehler: Profil konnte nicht als Text exportiert werden."
-L["Error: The text field is empty. Please paste a profile string."] = "Fehler: Das Textfeld ist leer. Bitte füge einen Profil-Text ein."
-L["Settings were imported into the active profile."] = "Einstellungen wurden erfolgreich ins aktuelle Profil importiert."
-L["|cffff0000Critical error during import!|r"] = "|cffff0000Kritischer Fehler beim Import!|r"
-L["The pasted string is invalid, incomplete, or does not originate from A-UI."] = "Der eingefügte Text ist ungültig, unvollständig oder stammt nicht von A-UI."
 L["Color Mode"] = "Farbmodus"
 L["Coloring"] = "Einfärbung"
 
+-- Tooltip-Optionen & Stile
+L["Icon Tooltips"] = "Icon-Tooltips"
+L["Configure extended information displayed in the tooltips of each button.\n"] = "Konfiguriere hier, welche erweiterten Informationen in den Tooltips der einzelnen Buttons angezeigt werden sollen.\n"
+L["Guild Roster"] = "Gildenmitglieder"
+L["System Stats"] = "System-Infos"
+L["Character Stats"] = "Charakter-Infos"
+L["Profession Stats"] = "Berufe-Infos"
+L["Talent Stats"] = "Talent-Infos"
+L["Adventure Guide Stats"] = "Abenteuerführer-Infos"
+L["Group Finder Stats"] = "Gruppensuche-Infos"
+L["Appearance"] = "Optik"
+L["Headers"] = "Überschriften"
+L["Font Size"] = "Schriftgröße"
+L["Default (Gold)"] = "Standard (Gold)"
+
 -- =====================================================================
--- 4. BUTTON LABELS & CURATED ICON PRESETS
+-- 4. COLORING (DATATEXTE & RAHMEN)
+-- =====================================================================
+L["DataTexts"] = "Datatexte"
+L["Gradient"] = "Farbverlauf"
+L["Class Gradient"] = "Klassenverlauf"
+L["Color 1 (Start)"] = "Farbe 1 (Start)"
+L["Color 2 (End)"] = "Farbe 2 (Ende)"
+L["Top & Bottom Panels"] = "Top & Bottom Panels"
+L["Left Chat"] = "Linker Chat"
+L["Right Chat"] = "Rechter Chat"
+L["Minimap"] = "Minimap"
+L["Color 1 (Left)"] = "Farbe 1 (Links)"
+L["Color 2 (Center)"] = "Farbe 2 (Mitte)"
+L["Color 3 (Right)"] = "Farbe 3 (Rechts)"
+L["Invert Gradient"] = "Verlauf invertieren"
+L["Gradient Direction"] = "Verlaufsrichtung"
+L["Horizontal (Left -> Right)"] = "Von Links nach Rechts"
+L["Horizontal (Right -> Left)"] = "Von Rechts nach Links"
+L["Vertical (Bottom -> Top)"] = "Von Unten nach Oben"
+L["Vertical (Top -> Bottom)"] = "Von Oben nach Unten"
+L["Colorize EditBox"] = "Chat-Eingabefeld einfärben"
+L["Apply the same border coloring to the chat editbox."] = "Wendet die gleiche Rahmenfärbung auf das Chat-Eingabefeld an."
+L["Alts Dashboard"] = "Alts-Dashboard"
+
+-- =====================================================================
+-- 5. BUTTON LABELS & CURATED ICON PRESETS
 -- =====================================================================
 L["Character"] = "Charakter"
 L["Professions"] = "Berufe"
@@ -171,15 +221,8 @@ L["Masks"] = "Masken"
 L["Question Mark"] = "Fragezeichen"
 
 -- =====================================================================
--- 5. TOOLTIPS (MICROBAR)
+-- 6. TOOLTIPS (MICROBAR & STATS)
 -- =====================================================================
-L["Guild Roster"] = "Gildenmitglieder"
-L["System Stats"] = "System-Infos"
-L["Character Stats"] = "Charakter-Infos"
-L["Profession Stats"] = "Berufe-Infos"
-L["Talent Stats"] = "Talent-Infos"
-L["Group Finder Stats"] = "Gruppensuche-Infos"
-L["Adventure Guide Stats"] = "Abenteuerführer-Infos"
 L["Primary Professions"] = "Hauptberufe:"
 L["Secondary Professions"] = "Nebenberufe:"
 L["No professions learned."] = "Keine Berufe erlernt."
@@ -219,7 +262,7 @@ L["Volume:"] = "Lautstärke:"
 L["Addon Memory:"] = "Addon-Speicher:"
 
 -- =====================================================================
--- 6. TELEPORTER MODUL
+-- 7. TELEPORTER MODUL
 -- =====================================================================
 L["Hearthstones"] = "Ruhesteine & Items"
 L["Toys"] = "Spielzeuge"
@@ -236,7 +279,7 @@ L["Cooldowns"] = "Abklingzeiten:"
 L["No items found."] = "Keine Gegenstände gefunden."
 
 -- =====================================================================
--- 7. TBC CLASSIC WÄHRUNGEN & ABZEICHEN
+-- 8. TBC CLASSIC WÄHRUNGEN & ABZEICHEN
 -- =====================================================================
 L["TBC PvE & PvP Badges:"] = "TBC PvE & PvP Abzeichen:"
 L["Badge of Justice"] = "Abzeichen der Gerechtigkeit"
@@ -249,7 +292,7 @@ L["Alterac Valley Mark of Honor"] = "Alteractal-Ehrenabzeichen"
 L["Eye of the Storm Mark of Honor"] = "Auge des Sturms-Ehrenabzeichen"
 
 -- =====================================================================
--- 8. RETAIL MIDNIGHT WÄHRUNGEN & TIEFEN
+-- 9. RETAIL MIDNIGHT WÄHRUNGEN & TIEFEN
 -- =====================================================================
 L["Catalyst Charges:"] = "Katalysator-Aufladungen:"
 L["PvE Crests:"] = "PvE Wappen:"
@@ -290,7 +333,7 @@ L["Level"] = "Stufe"
 L["Season Progress:"] = "Saison Fortschritt:"
 
 -- =====================================================================
--- 9. ALTS DASHBOARD
+-- 10. ALTS DASHBOARD
 -- =====================================================================
 L["Class"] = "Klasse"
 L["Name"] = "Name"
@@ -312,7 +355,7 @@ L["Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r"] = "Spie
 L["Characters: |cff00ffd2%d|r"] = "Charaktere: |cff00ffd2%d|r"
 
 -- =====================================================================
--- 10. DATATEXT & MAP PINS
+-- 11. DATATEXT & MAP PINS
 -- =====================================================================
 L["Left Click:"] = "Links-Klick:"
 L["Toggle Microbar"] = "Microbar umschalten"

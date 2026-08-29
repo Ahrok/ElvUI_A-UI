@@ -1,7 +1,7 @@
 ## Interface: 20504
 ## Title: |cff1784d1ElvUI|r |cff00ffd2A-UI|r (TBC)
 ## Notes: Sammlung von Anpassungen für das ElvUI Interface in TBC Classic.
-## Version: 1.0.1
+## Version: 1.2.0
 ## RequiredDeps: ElvUI
 ## Author: Ahrok
 ## DefaultState: enabled

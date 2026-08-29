@@ -1,11 +1,18 @@
+local addonName, Engine = ...
+addonName = addonName or "ElvUI_A-UI"
+
 local E, L, V, P, G = unpack(ElvUI)
 local AUI = E:NewModule('A-UI', 'AceEvent-3.0', 'AceHook-3.0')
 local EP = LibStub("LibElvUIPlugin-1.0")
-local addonName = "ElvUI_A-UI"
 
 local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 AUI.isRetail = isRetail
 AUI.loginTime = GetTime()
+
+-- Version dynamisch aus der .toc ermitteln
+AUI.version = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version"))
+    or (GetAddOnMetadata and GetAddOnMetadata(addonName, "Version"))
+    or "1.0.0"
 
 -- =====================================================================
 -- 1. DEFAULTS IN ELVUI'S P-TABLE
@@ -98,14 +105,15 @@ P["AUI"] = {
         borders = {
             topBottom = { enable = false, colorMode = "CLASS_GRADIENT", color1 = {r=1,g=0.82,b=0}, color2 = {r=1,g=0.2,b=0}, color3 = {r=0.5,g=0,b=0} },
             minimap = { enable = false, colorMode = "CLASS_GRADIENT", color1 = {r=1,g=0.82,b=0}, color2 = {r=1,g=0.2,b=0}, orientation = "HORIZONTAL" },
-            leftChat = { enable = false, colorMode = "CLASS_GRADIENT", color1 = {r=1,g=0.82,b=0}, color2 = {r=1,g=0.2,b=0}, invert = false },
+            leftChat = { enable = false, colorMode = "CLASS_GRADIENT", color1 = {r=1,g=0.82,b=0}, color2 = {r=1,g=0.2,b=0}, invert = false, colorEditBox = true },
             rightChat = { enable = false, colorMode = "CLASS_GRADIENT", color1 = {r=1,g=0.82,b=0}, color2 = {r=1,g=0.2,b=0}, invert = false },
+            alts = { enable = false, colorMode = "CLASS_GRADIENT", color1 = {r=1,g=0.82,b=0}, color2 = {r=1,g=0.2,b=0}, color3 = {r=0.5,g=0,b=0} },
         }
     }
 }
 
 -- =====================================================================
--- 2. HILFSFUNKTION: DEFAULTS SICHER IN DIE AKTIVE DB LADEN
+-- 2. HILFSFUNKTIONEN
 -- =====================================================================
 local function InsertDefaults(db, defaults)
     for k, v in pairs(defaults) do
@@ -116,6 +124,15 @@ local function InsertDefaults(db, defaults)
             if db[k] == nil then db[k] = v end
         end
     end
+end
+
+local function IsAddonActive(id)
+    if C_AddOns and C_AddOns.IsAddOnLoaded then
+        return C_AddOns.IsAddOnLoaded(id)
+    elseif IsAddonLoaded then
+        return IsAddonLoaded(id)
+    end
+    return false
 end
 
 function AUI:InitDelveDatabase()
@@ -153,33 +170,36 @@ local function GetBorderOptions(name, order, dbKey, isThreeColor)
     local group = {
         order = order, type = "group", name = name,
         get = function(info) return E.db.AUI.coloring.borders[dbKey][info[#info]] end,
-        set = function(info, value) E.db.AUI.coloring.borders[dbKey][info[#info]] = value; if AUI.UpdateBorderColors then AUI:UpdateBorderColors() end end,
+        set = function(info, value) 
+            E.db.AUI.coloring.borders[dbKey][info[#info]] = value
+            if AUI.UpdateBorderColors then AUI:UpdateBorderColors() end 
+        end,
         args = {
             enable = { order = 1, type = "toggle", name = L["Enable"] or "Aktivieren", width = "full" },
             colorMode = {
                 order = 2, type = "select", name = L["Color Mode"] or "Farbmodus",
                 disabled = function() return not E.db.AUI.coloring.borders[dbKey].enable end,
                 values = { 
-                    ["CLASS"] = "Klassenfarbe", 
-                    ["CUSTOM"] = "Eigene Farbe", 
-                    ["GRADIENT"] = "Farbverlauf", 
-                    ["CLASS_GRADIENT"] = "Klassenverlauf" 
+                    ["CLASS"] = L["Class Color"] or "Klassenfarbe", 
+                    ["CUSTOM"] = L["Custom Color"] or "Eigene Farbe", 
+                    ["GRADIENT"] = L["Gradient"] or "Farbverlauf", 
+                    ["CLASS_GRADIENT"] = L["Class Gradient"] or "Klassenverlauf" 
                 }
             },
             color1 = {
-                order = 3, type = "color", name = isThreeColor and "Farbe 1 (Links)" or "Farbe 1 (Start)", hasAlpha = false,
+                order = 3, type = "color", name = isThreeColor and (L["Color 1 (Left)"] or "Farbe 1 (Links)") or (L["Color 1 (Start)"] or "Farbe 1 (Start)"), hasAlpha = false,
                 disabled = function() local m = E.db.AUI.coloring.borders[dbKey].colorMode; return not E.db.AUI.coloring.borders[dbKey].enable or m == "CLASS" or m == "CLASS_GRADIENT" end,
                 get = function() local t = E.db.AUI.coloring.borders[dbKey].color1; return t.r, t.g, t.b, 1 end,
                 set = function(_, r, g, b) local t = E.db.AUI.coloring.borders[dbKey].color1; t.r, t.g, t.b = r, g, b; if AUI.UpdateBorderColors then AUI:UpdateBorderColors() end end,
             },
             color2 = {
-                order = 4, type = "color", name = isThreeColor and "Farbe 2 (Mitte)" or "Farbe 2 (Ende)", hasAlpha = false,
+                order = 4, type = "color", name = isThreeColor and (L["Color 2 (Center)"] or "Farbe 2 (Mitte)") or (L["Color 2 (End)"] or "Farbe 2 (Ende)"), hasAlpha = false,
                 disabled = function() local m = E.db.AUI.coloring.borders[dbKey].colorMode; return not E.db.AUI.coloring.borders[dbKey].enable or m == "CLASS" or m == "CLASS_GRADIENT" or m == "CUSTOM" end,
                 get = function() local t = E.db.AUI.coloring.borders[dbKey].color2; return t.r, t.g, t.b, 1 end,
                 set = function(_, r, g, b) local t = E.db.AUI.coloring.borders[dbKey].color2; t.r, t.g, t.b = r, g, b; if AUI.UpdateBorderColors then AUI:UpdateBorderColors() end end,
             },
             color3 = isThreeColor and {
-                order = 5, type = "color", name = "Farbe 3 (Rechts)", hasAlpha = false,
+                order = 5, type = "color", name = L["Color 3 (Right)"] or "Farbe 3 (Rechts)", hasAlpha = false,
                 disabled = function() local m = E.db.AUI.coloring.borders[dbKey].colorMode; return not E.db.AUI.coloring.borders[dbKey].enable or m == "CLASS" or m == "CLASS_GRADIENT" or m == "CUSTOM" end,
                 get = function() local t = E.db.AUI.coloring.borders[dbKey].color3; return t.r, t.g, t.b, 1 end,
                 set = function(_, r, g, b) local t = E.db.AUI.coloring.borders[dbKey].color3; t.r, t.g, t.b = r, g, b; if AUI.UpdateBorderColors then AUI:UpdateBorderColors() end end,
@@ -189,18 +209,25 @@ local function GetBorderOptions(name, order, dbKey, isThreeColor)
     
     if dbKey == "leftChat" or dbKey == "rightChat" then
         group.args.invert = {
-            order = 6, type = "toggle", name = "Verlauf invertieren",
+            order = 6, type = "toggle", name = L["Invert Gradient"] or "Verlauf invertieren",
             disabled = function() local m = E.db.AUI.coloring.borders[dbKey].colorMode; return not E.db.AUI.coloring.borders[dbKey].enable or m == "CLASS" or m == "CUSTOM" end,
         }
+        if dbKey == "leftChat" then
+            group.args.colorEditBox = {
+                order = 7, type = "toggle", name = L["Colorize EditBox"] or "Chat-Eingabefeld einfärben", width = "full",
+                desc = L["Apply the same border coloring to the chat editbox."] or "Wendet die gleiche Rahmenfärbung auf das Chat-Eingabefeld an.",
+                disabled = function() return not E.db.AUI.coloring.borders[dbKey].enable end,
+            }
+        end
     elseif dbKey == "minimap" then
         group.args.orientation = {
-            order = 6, type = "select", name = "Verlaufsrichtung", width = "double",
+            order = 6, type = "select", name = L["Gradient Direction"] or "Verlaufsrichtung", width = "double",
             disabled = function() local m = E.db.AUI.coloring.borders[dbKey].colorMode; return not E.db.AUI.coloring.borders[dbKey].enable or m == "CLASS" or m == "CUSTOM" end,
             values = {
-                ["HORIZONTAL"] = "Von Links nach Rechts",
-                ["HORIZONTAL_REV"] = "Von Rechts nach Links",
-                ["VERTICAL"] = "Von Unten nach Oben",
-                ["VERTICAL_REV"] = "Von Oben nach Unten"
+                ["HORIZONTAL"] = L["Horizontal (Left -> Right)"] or "Von Links nach Rechts",
+                ["HORIZONTAL_REV"] = L["Horizontal (Right -> Left)"] or "Von Rechts nach Links",
+                ["VERTICAL"] = L["Vertical (Bottom -> Top)"] or "Von Unten nach Oben",
+                ["VERTICAL_REV"] = L["Vertical (Top -> Bottom)"] or "Von Oben nach Unten"
             }
         }
     end
@@ -211,45 +238,46 @@ end
 -- =====================================================================
 -- 5. OPTIONEN
 -- =====================================================================
-local function IsAddonActive(id)
-    if C_AddOns and C_AddOns.IsAddOnLoaded then
-        return C_AddOns.IsAddOnLoaded(id)
-    elseif IsAddOnLoaded then
-        return IsAddOnLoaded(id)
-    end
-    return false
-end
-
 function AUI:InsertOptions()
+    if E.Options.args.AUI then
+        E.Options.args.AUI = nil
+    end
+
     E.Options.args.AUI = {
         type = "group",
         name = "|TInterface\\AddOns\\ElvUI_A-UI\\media\\A-UI.tga:16:16|t |cff00ffd2A-UI|r",
         args = {
             installer = {
                 type = "group", 
-                name = "A-UI Installer", 
+                name = L["A-UI Installer"] or "A-UI Installer", 
                 order = 1,
                 args = {
                     header = {
                         order = 1,
                         type = "header",
-                        name = "|TInterface\\AddOns\\ElvUI_A-UI\\media\\A-UI.tga:16:16|t |cff00ffd2A-UI Installation & Profile|r",
+                        name = "|TInterface\\AddOns\\ElvUI_A-UI\\media\\A-UI.tga:16:16|t |cff00ffd2" .. (L["A-UI Installation & Profile"] or "A-UI Installation & Profile") .. "|r",
                     },
                     addonList = {
                         order = 2,
                         type = "description",
                         name = function()
-                            local text = "A-UI nutzt Synergien mit folgenden ElvUI-Plugins:\n\n"
+                            local text = L["A-UI uses synergies with the following ElvUI plugins:\n\n"] or "A-UI uses synergies with the following ElvUI plugins:\n\n"
                             local plugins = {
                                 { id = "ElvUI_EltreumUI", name = "Eltreum UI" },
-                                { id = "ElvUI_WindTools", name = "WindTools" },
-                                { id = "ElvUI_NutsAndBolts", name = "Nuts & Bolts" }
                             }
+                            if isRetail then
+                                table.insert(plugins, { id = "ElvUI_WindTools", name = "WindTools" })
+                            end
+                            table.insert(plugins, { id = "ElvUI_NutsAndBolts", name = "Nuts & Bolts" })
+
+                            local activeStr = L["Active"] or "Active"
+                            local missingStr = L["Missing"] or "Missing"
+
                             for _, p in ipairs(plugins) do
                                 if IsAddonActive(p.id) then
-                                    text = text .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t |cff00ff00" .. p.name .. " (Aktiv)|r\n"
+                                    text = text .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t |cff00ff00" .. p.name .. " (" .. activeStr .. ")|r\n"
                                 else
-                                    text = text .. "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t |cffff0000" .. p.name .. " (Fehlt)|r\n"
+                                    text = text .. "|TInterface\\RaidFrame\\ReadyCheck-NotReady:14|t |cffff0000" .. p.name .. " (" .. missingStr .. ")|r\n"
                                 end
                             end
                             return text .. "\n"
@@ -257,20 +285,45 @@ function AUI:InsertOptions()
                         fontSize = "medium",
                     },
                     installGroup = {
-                        name = "|cff00ffd2Layout Installation|r",
+                        name = "|cff00ffd2" .. (L["Layout Installation"] or "Layout Installation") .. "|r",
                         type = "group", order = 3, guiInline = true,
                         args = {
-                            desc1 = { order = 1, type = "description", name = "Führe den Installer aus, um das Standard A-UI Layout auf diesem Charakter anzuwenden (Fensterpositionen, Custom Texts, etc.).\n", width = "full" },
-                            installBtn = { order = 2, type = "execute", name = "Installer starten", func = function() if AUI.RunInstaller then AUI:RunInstaller() end end },
+                            desc1 = { 
+                                order = 1, 
+                                type = "description", 
+                                name = L["Run the installer to apply the standard A-UI layout to this character (frame positions, custom texts, etc.).\n"] or "Run the installer to apply the standard A-UI layout to this character (frame positions, custom texts, etc.).\n", 
+                                width = "full" 
+                            },
+                            installBtn = { 
+                                order = 2, 
+                                type = "execute", 
+                                name = L["Start Installer"] or "Start Installer", 
+                                func = function() if AUI.RunInstaller then AUI:RunInstaller() end end 
+                            },
                         },
                     },
                     transferGroup = {
-                        name = "|cff00ffd2Profil Transfer|r",
+                        name = "|cff00ffd2" .. (L["Profile Transfer"] or "Profile Transfer") .. "|r",
                         type = "group", order = 4, guiInline = true,
                         args = {
-                            desc2 = { order = 1, type = "description", name = "Hier kannst du nur deine speziellen A-UI Einstellungen (Microbar, Icons, Tooltips) als Text exportieren/importieren.\n", width = "full" },
-                            exportBtn = { order = 2, type = "execute", name = L["Export"] or "Exportieren", func = function() if AUI.ExportProfile then AUI:ExportProfile() end end },
-                            importBtn = { order = 3, type = "execute", name = L["Import"] or "Importieren", func = function() if AUI.ShowTransferWindow then AUI:ShowTransferWindow(false) end end },
+                            desc2 = { 
+                                order = 1, 
+                                type = "description", 
+                                name = L["Here you can export or import only your specific A-UI settings (microbar, icons, tooltips) as text.\n"] or "Here you can export or import only your specific A-UI settings (microbar, icons, tooltips) as text.\n", 
+                                width = "full" 
+                            },
+                            exportBtn = { 
+                                order = 2, 
+                                type = "execute", 
+                                name = L["Export"] or "Export", 
+                                func = function() if AUI.ExportProfile then AUI:ExportProfile() end end 
+                            },
+                            importBtn = { 
+                                order = 3, 
+                                type = "execute", 
+                                name = L["Import"] or "Import", 
+                                func = function() if AUI.ShowTransferWindow then AUI:ShowTransferWindow(false) end end 
+                            },
                         },
                     },
                 },
@@ -346,9 +399,14 @@ function AUI:InsertOptions()
                         }
                     },
                     tooltips = {
-                        order = 10, type = "group", name = "Icon-Tooltips",
+                        order = 10, type = "group", name = L["Icon Tooltips"] or "Icon-Tooltips",
                         args = {
-                            info = { order = 0, type = "description", name = "Konfiguriere hier, welche erweiterten Informationen in den Tooltips der einzelnen Buttons angezeigt werden sollen.\n", fontSize = "medium" },
+                            info = { 
+                                order = 0, 
+                                type = "description", 
+                                name = L["Configure extended information displayed in the tooltips of each button.\n"] or "Konfiguriere hier, welche erweiterten Informationen in den Tooltips der einzelnen Buttons angezeigt werden sollen.\n", 
+                                fontSize = "medium" 
+                            },
                             extendedGuildTooltip = { order = 1, type = "toggle", name = L["Guild Roster"] or "Gildenmitglieder", width = "full" },
                             extendedSystemTooltip = { order = 2, type = "toggle", name = L["System Stats"] or "System-Infos", width = "full" },
                             extendedCharacterTooltip = { order = 3, type = "toggle", name = L["Character Stats"] or "Charakter-Infos", width = "full" },
@@ -358,37 +416,41 @@ function AUI:InsertOptions()
                             extendedLFDTooltip = { order = 7, type = "toggle", name = L["Group Finder Stats"] or "Gruppensuche-Infos", width = "full" },
                             
                             appearanceGroup = {
-                                order = 10, type = "group", name = "Optik", guiInline = true,
+                                order = 10, type = "group", name = L["Appearance"] or "Optik", guiInline = true,
                                 args = {
-                                    bgHeader = { order = 1, type = "header", name = "Hintergrund" },
-                                    tooltipBackdropAlpha = { order = 2, type = "range", name = "Transparenz", min = 0, max = 1, step = 0.05 },
-                                    tooltipBackdropColorEnable = { order = 3, type = "toggle", name = "Färben" },
+                                    bgHeader = { order = 1, type = "header", name = L["Backdrop"] or "Hintergrund" },
+                                    tooltipBackdropAlpha = { order = 2, type = "range", name = L["Alpha"] or "Transparenz", min = 0, max = 1, step = 0.05 },
+                                    tooltipBackdropColorEnable = { order = 3, type = "toggle", name = L["Colorize"] or "Färben" },
                                     tooltipBackdropColor = {
-                                        order = 4, type = "color", name = "Farbe", hasAlpha = false,
+                                        order = 4, type = "color", name = L["Color"] or "Farbe", hasAlpha = false,
                                         disabled = function() return not E.db.AUI.microbar.tooltipBackdropColorEnable end,
                                         get = function() local t = E.db.AUI.microbar.tooltipBackdropColor; return t.r, t.g, t.b, 1 end,
                                         set = function(_, r, g, b) local t = E.db.AUI.microbar.tooltipBackdropColor; t.r, t.g, t.b = r, g, b; end,
                                     },
-                                    borderHeader = { order = 5, type = "header", name = "Rahmen" },
-                                    tooltipBorderColorEnable = { order = 6, type = "toggle", name = "Färben" },
+                                    borderHeader = { order = 5, type = "header", name = L["Border"] or "Rahmen" },
+                                    tooltipBorderColorEnable = { order = 6, type = "toggle", name = L["Colorize"] or "Färben" },
                                     tooltipBorderClassColor = { 
-                                        order = 7, type = "toggle", name = "Klassenfarbe", 
+                                        order = 7, type = "toggle", name = L["Class Color"] or "Klassenfarbe", 
                                         disabled = function() return not E.db.AUI.microbar.tooltipBorderColorEnable end 
                                     },
                                     tooltipBorderColor = {
-                                        order = 8, type = "color", name = "Farbe", hasAlpha = false,
+                                        order = 8, type = "color", name = L["Color"] or "Farbe", hasAlpha = false,
                                         disabled = function() return not E.db.AUI.microbar.tooltipBorderColorEnable or E.db.AUI.microbar.tooltipBorderClassColor end,
                                         get = function() local t = E.db.AUI.microbar.tooltipBorderColor; return t.r, t.g, t.b, 1 end,
                                         set = function(_, r, g, b) local t = E.db.AUI.microbar.tooltipBorderColor; t.r, t.g, t.b = r, g, b; end,
                                     },
-                                    titleHeader = { order = 10, type = "header", name = "Überschriften" },
-                                    titleFontSize = { order = 11, type = "range", name = "Schriftgröße", min = 8, max = 24, step = 1 },
+                                    titleHeader = { order = 10, type = "header", name = L["Headers"] or "Überschriften" },
+                                    titleFontSize = { order = 11, type = "range", name = L["Font Size"] or "Schriftgröße", min = 8, max = 24, step = 1 },
                                     titleColorMode = { 
-                                        order = 12, type = "select", name = "Färbung", 
-                                        values = { ["DEFAULT"] = "Standard (Gold)", ["CLASS"] = "Klassenfarbe", ["CUSTOM"] = "Eigene Farbe" } 
+                                        order = 12, type = "select", name = L["Color Mode"] or "Farbmodus", 
+                                        values = { 
+                                            ["DEFAULT"] = L["Default (Gold)"] or "Standard (Gold)", 
+                                            ["CLASS"] = L["Class Color"] or "Klassenfarbe", 
+                                            ["CUSTOM"] = L["Custom Color"] or "Eigene Farbe" 
+                                        } 
                                     },
                                     titleColor = {
-                                        order = 13, type = "color", name = "Eigene Farbe", hasAlpha = false,
+                                        order = 13, type = "color", name = L["Custom Color"] or "Eigene Farbe", hasAlpha = false,
                                         disabled = function() return E.db.AUI.microbar.titleColorMode ~= "CUSTOM" end,
                                         get = function() local t = E.db.AUI.microbar.titleColor; return t.r, t.g, t.b, 1 end,
                                         set = function(_, r, g, b) local t = E.db.AUI.microbar.titleColor; t.r, t.g, t.b = r, g, b; end,
@@ -404,9 +466,9 @@ function AUI:InsertOptions()
                             showMailButton = { order = 2, type = "toggle", name = L["Show Mail Button"] or "Post anzeigen", set = function(_, v) E.db.AUI.microbar.showMailButton = v; if AUI.UpdateMicrobar then AUI:UpdateMicrobar() end; end },
                             hideMailEmpty = { order = 3, type = "toggle", name = L["Hide if Empty"] or "Verstecken wenn leer", disabled = function() return not E.db.AUI.microbar.showMailButton end },
                             showCalendarButton = { order = 4, type = "toggle", name = L["Show Calendar Button"] or "Kalender anzeigen", set = function(_, v) E.db.AUI.microbar.showCalendarButton = v; if AUI.UpdateMicrobar then AUI:UpdateMicrobar() end; end },
-                            showTeleportButton = { order = 5, type = "toggle", name = L["Show Teleport Button"] or "Teleport-Button anzeigen", set = function(_, v) E.db.AUI.microbar.showTeleportButton = v; if AUI.UpdateMicrobar then AUI:UpdateMicrobar() end; end },
+                            showTeleportButton = { order = 5, type = "toggle", name = L["Show Teleport Button"] or "Teleport anzeigen", set = function(_, v) E.db.AUI.microbar.showTeleportButton = v; if AUI.UpdateMicrobar then AUI:UpdateMicrobar() end; end },
                             spacerVis = { order = 6, type = "description", name = " ", width = "full" },
-                            visibilityStr = { order = 7, type = "input", width = "full", name = L["Macro Conditionals"] or "Sichtbarkeits-Bedingungen", desc = "[combat] hide; [vehicleui] hide; show" },
+                            visibilityStr = { order = 7, type = "input", width = "full", name = L["Macro Conditionals"] or "Makro-Bedingungen", desc = "[combat] hide; [vehicleui] hide; show" },
                         }
                     },
                     iconEffects = {
@@ -484,7 +546,7 @@ function AUI:InsertOptions()
                 type = "group", name = L["Coloring"] or "Coloring", order = 4, childGroups = "tab",
                 args = {
                     datatexts = {
-                        order = 1, type = "group", name = "Datatexte",
+                        order = 1, type = "group", name = L["DataTexts"] or "Datatexte",
                         get = function(info) return E.db.AUI.coloring.datatexts[info[#info]] end,
                         set = function(info, value) 
                             E.db.AUI.coloring.datatexts[info[#info]] = value
@@ -493,19 +555,19 @@ function AUI:InsertOptions()
                             if DT and DT.LoadDataTexts then DT:LoadDataTexts() end
                         end,
                         args = {
-                            enable = { order = 1, type = "toggle", name = "Aktivieren", width = "full" },
+                            enable = { order = 1, type = "toggle", name = L["Enable"] or "Aktivieren", width = "full" },
                             colorMode = {
-                                order = 2, type = "select", name = "Farbmodus",
+                                order = 2, type = "select", name = L["Color Mode"] or "Farbmodus",
                                 disabled = function() return not E.db.AUI.coloring.datatexts.enable end,
                                 values = { 
-                                    ["CLASS"] = "Klassenfarbe", 
-                                    ["CUSTOM"] = "Eigene Farbe",
-                                    ["GRADIENT"] = "Farbverlauf",
-                                    ["CLASS_GRADIENT"] = "Klassenverlauf" 
+                                    ["CLASS"] = L["Class Color"] or "Klassenfarbe", 
+                                    ["CUSTOM"] = L["Custom Color"] or "Eigene Farbe", 
+                                    ["GRADIENT"] = L["Gradient"] or "Farbverlauf", 
+                                    ["CLASS_GRADIENT"] = L["Class Gradient"] or "Klassenverlauf" 
                                 }
                             },
                             customColor = {
-                                order = 3, type = "color", name = "Farbe 1 (Start)", hasAlpha = false,
+                                order = 3, type = "color", name = L["Color 1 (Start)"] or "Farbe 1 (Start)", hasAlpha = false,
                                 disabled = function() local m = E.db.AUI.coloring.datatexts.colorMode; return not E.db.AUI.coloring.datatexts.enable or m == "CLASS" or m == "CLASS_GRADIENT" end,
                                 get = function() local t = E.db.AUI.coloring.datatexts.customColor; return t.r, t.g, t.b, 1 end,
                                 set = function(_, r, g, b) 
@@ -516,7 +578,7 @@ function AUI:InsertOptions()
                                 end,
                             },
                             gradientColor = {
-                                order = 4, type = "color", name = "Farbe 2 (Ende)", hasAlpha = false,
+                                order = 4, type = "color", name = L["Color 2 (End)"] or "Farbe 2 (Ende)", hasAlpha = false,
                                 disabled = function() local m = E.db.AUI.coloring.datatexts.colorMode; return not E.db.AUI.coloring.datatexts.enable or m == "CLASS" or m == "CUSTOM" end,
                                 get = function() local t = E.db.AUI.coloring.datatexts.gradientColor; return t.r, t.g, t.b, 1 end,
                                 set = function(_, r, g, b) 
@@ -528,12 +590,13 @@ function AUI:InsertOptions()
                             }
                         }
                     },
-                    topBottom = GetBorderOptions("Top & Bottom Panels", 2, "topBottom", true),
-                    leftChat = GetBorderOptions("Linker Chat", 3, "leftChat", false),
-                    rightChat = GetBorderOptions("Rechter Chat", 4, "rightChat", false),
-                    minimap = GetBorderOptions("Minimap", 5, "minimap", false),
+                    topBottom = GetBorderOptions(L["Top & Bottom Panels"] or "Top & Bottom Panels", 2, "topBottom", true),
+                    leftChat = GetBorderOptions(L["Left Chat"] or "Linker Chat", 3, "leftChat", false),
+                    rightChat = GetBorderOptions(L["Right Chat"] or "Rechter Chat", 4, "rightChat", false),
+                    minimap = GetBorderOptions(L["Minimap"] or "Minimap", 5, "minimap", false),
+                    alts = GetBorderOptions(L["Alts Dashboard"] or "Alts-Dashboard", 6, "alts", true),
                 }
-            }
+            },
         },
     }
     
@@ -581,7 +644,8 @@ function AUI:Initialize()
     E.db.AUI = E.db.AUI or {}
     InsertDefaults(E.db.AUI, P.AUI)
     hooksecurefunc(E, "UpdateAll", function() AUI:ProfileUpdate() end)
-    EP:RegisterPlugin(addonName, AUI.InsertOptions)
+    
+    EP:RegisterPlugin(addonName, AUI.InsertOptions, nil, AUI.version)
     
     if E.db.AUI.microbar.enable and E.db.actionbar and E.db.actionbar.microbar and E.db.actionbar.microbar.enabled then
         E.db.actionbar.microbar.enabled = false

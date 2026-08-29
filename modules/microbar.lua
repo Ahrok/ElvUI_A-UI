@@ -87,7 +87,7 @@ function AUI:UpdateIcons()
                         else LCG.ButtonGlow_Start(data.wrapper) end
                     end
                 else
-                    tex:SetDesaturated(db.desaturateAll)
+                    tex:SetDesaturated(db.desaturateAll or false)
                     
                     if db.colorAll then
                         if db.globalClassColor then
@@ -182,14 +182,16 @@ function AUI:UpdateMicrobar()
         end
     end
     
-    local padding = db.barPadding or 4
+    local size = (type(db.size) == "number" and db.size > 0) and db.size or 28
+    local spacing = (type(db.spacing) == "number") and db.spacing or 4
+    local padding = (type(db.barPadding) == "number") and db.barPadding or 4
     local count = #activeButtons
-    local buttonsPerRow = db.buttonsPerRow or 15
+    local buttonsPerRow = (type(db.buttonsPerRow) == "number" and db.buttonsPerRow > 0) and db.buttonsPerRow or 15
     local numCols = math.min(count, buttonsPerRow)
     local numRows = math.ceil(count / buttonsPerRow)
     
     if count > 0 then
-        bar:SetSize((padding * 2) + (db.size * numCols) + (db.spacing * (numCols - 1)), (padding * 2) + (db.size * numRows) + (db.spacing * (numRows - 1)))
+        bar:SetSize((padding * 2) + (size * numCols) + (spacing * (numCols - 1)), (padding * 2) + (size * numRows) + (spacing * (numRows - 1)))
     else 
         bar:SetSize(padding * 2, padding * 2) 
     end
@@ -198,21 +200,21 @@ function AUI:UpdateMicrobar()
         local wrapper = data.wrapper
         local visual = data.visual
         
-        wrapper:SetSize(db.size, db.size)
+        wrapper:SetSize(size, size)
         wrapper:ClearAllPoints()
         
         local displayIndex = db.reverseOrder and (count - i + 1) or i
         local col = (displayIndex - 1) % buttonsPerRow
         local row = math.floor((displayIndex - 1) / buttonsPerRow)
-        local xPos = padding + (col * (db.size + db.spacing))
-        local yPos = -(padding + (row * (db.size + db.spacing)))
+        local xPos = padding + (col * (size + spacing))
+        local yPos = -(padding + (row * (size + spacing)))
         wrapper:SetPoint("TOPLEFT", bar, "TOPLEFT", xPos, yPos)
         
-        visual:SetSize(db.size, db.size)
+        visual:SetSize(size, size)
         visual:ClearAllPoints()
         visual:SetPoint("CENTER", wrapper, "CENTER", 0, 0)
         
-        local innerSize = (db.buttonBackdrop or db.buttonBorder) and (db.size - 2) or db.size
+        local innerSize = (db.buttonBackdrop or db.buttonBorder) and math.max(1, size - 2) or size
         data.texFrame:SetSize(innerSize, innerSize)
         if not db.buttonBackdrop and not db.buttonBorder then 
             visual:SetTemplate("NoBackdrop")

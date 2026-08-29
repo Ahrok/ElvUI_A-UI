@@ -28,7 +28,6 @@ L["A-UI uses synergies with other ElvUI plugins. Here is the status of your syst
 L[" (Installed & Active)"] = true
 L[" (Missing - Recommended!)"] = true
 L["Don't worry: If plugins are missing, A-UI will automatically adjust the layout to prevent errors."] = true
-L["Layout Installation"] = true
 L["Click the button below to install the A-UI main profile."] = true
 L["Profile tags are calculated live and adjusted to your installed addons."] = true
 L["Install Layout"] = true
@@ -39,9 +38,31 @@ L["All supported plugins have been considered and your interface is now ready fo
 L["Have fun and good loot!"] = true
 L["Close"] = true
 L["Installation"] = true
+L["A-UI Installer"] = true
+L["A-UI Installation & Profile"] = true
+L["A-UI uses synergies with the following ElvUI plugins:\n\n"] = true
+L["Active"] = "Active"
+L["Missing"] = "Missing"
+L["Layout Installation"] = true
+L["Run the installer to apply the standard A-UI layout to this character (frame positions, custom texts, etc.).\n"] = true
+L["Start Installer"] = true
+L["Profile Transfer"] = true
+L["Here you can export or import only your specific A-UI settings (microbar, icons, tooltips) as text.\n"] = true
+L["Export"] = true
+L["Import"] = true
+L["Profile: "] = true
+L["Copy the string with Ctrl+C:"] = true
+L["1. Paste the profile string here (Ctrl+V):"] = true
+L["Cancel"] = true
+L["Warning: LibDeflate not found. Using standard ElvUI export."] = true
+L["Critical Error: Profile could not be converted to a string."] = true
+L["Error: The text field is empty. Please paste a profile string."] = true
+L["Settings were imported into the active profile."] = true
+L["|cffff0000Critical error during import!|r"] = true
+L["The pasted string is invalid, incomplete, or does not originate from A-UI."] = true
 
 -- =====================================================================
--- 3. OPTIONS & MICROBAR CONFIGURATION
+-- 3. OPTIONS, MICROBAR & TOOLTIP DESIGN
 -- =====================================================================
 L["Enable"] = true
 L["Size"] = true
@@ -54,6 +75,7 @@ L["Backdrop"] = true
 L["Alpha"] = true
 L["Colorize"] = true
 L["Class Color"] = true
+L["Custom Color"] = true
 L["Color"] = true
 L["Border"] = true
 L["Buttons"] = true
@@ -86,23 +108,51 @@ L["Color All"] = true
 L["Icon Customization"] = true
 L["Choose icons and individual colors below."] = true
 L["Default"] = true
-L["Export"] = true
-L["Import"] = true
-L["Profile: "] = true
-L["Copy the string with Ctrl+C:"] = true
-L["1. Paste the profile string here (Ctrl+V):"] = true
-L["Cancel"] = true
-L["Warning: LibDeflate not found. Using standard ElvUI export."] = true
-L["Critical Error: Profile could not be converted to a string."] = true
-L["Error: The text field is empty. Please paste a profile string."] = true
-L["Settings were imported into the active profile."] = true
-L["|cffff0000Critical error during import!|r"] = true
-L["The pasted string is invalid, incomplete, or does not originate from A-UI."] = true
 L["Color Mode"] = true
 L["Coloring"] = true
 
+-- Tooltip Options & Styles
+L["Icon Tooltips"] = true
+L["Configure extended information displayed in the tooltips of each button.\n"] = true
+L["Guild Roster"] = true
+L["System Stats"] = true
+L["Character Stats"] = true
+L["Profession Stats"] = true
+L["Talent Stats"] = true
+L["Adventure Guide Stats"] = true
+L["Group Finder Stats"] = true
+L["Appearance"] = true
+L["Headers"] = true
+L["Font Size"] = true
+L["Default (Gold)"] = true
+
 -- =====================================================================
--- 4. BUTTON LABELS & CURATED ICON PRESETS
+-- 4. COLORING (DATATEXTS & BORDERS)
+-- =====================================================================
+L["DataTexts"] = true
+L["Gradient"] = true
+L["Class Gradient"] = true
+L["Color 1 (Start)"] = true
+L["Color 2 (End)"] = true
+L["Top & Bottom Panels"] = true
+L["Left Chat"] = true
+L["Right Chat"] = true
+L["Minimap"] = true
+L["Color 1 (Left)"] = true
+L["Color 2 (Center)"] = true
+L["Color 3 (Right)"] = true
+L["Invert Gradient"] = true
+L["Gradient Direction"] = true
+L["Horizontal (Left -> Right)"] = true
+L["Horizontal (Right -> Left)"] = true
+L["Vertical (Bottom -> Top)"] = true
+L["Vertical (Top -> Bottom)"] = true
+L["Colorize EditBox"] = true
+L["Apply the same border coloring to the chat editbox."] = true
+L["Alts Dashboard"] = true
+
+-- =====================================================================
+-- 5. BUTTON LABELS & CURATED ICON PRESETS
 -- =====================================================================
 L["Character"] = true
 L["Professions"] = true
@@ -170,15 +220,8 @@ L["Masks"] = true
 L["Question Mark"] = true
 
 -- =====================================================================
--- 5. TOOLTIPS (MICROBAR)
+-- 6. TOOLTIPS (MICROBAR & STATS)
 -- =====================================================================
-L["Guild Roster"] = true
-L["System Stats"] = true
-L["Character Stats"] = true
-L["Profession Stats"] = true
-L["Talent Stats"] = true
-L["Group Finder Stats"] = true
-L["Adventure Guide Stats"] = true
 L["Primary Professions"] = "Primary Professions:"
 L["Secondary Professions"] = "Secondary Professions:"
 L["No professions learned."] = "No professions learned."
@@ -218,7 +261,7 @@ L["Volume:"] = true
 L["Addon Memory:"] = true
 
 -- =====================================================================
--- 6. TELEPORTER MODULE
+-- 7. TELEPORTER MODULE
 -- =====================================================================
 L["Hearthstones"] = "Hearthstones & Items"
 L["Toys"] = "Toys"
@@ -235,7 +278,7 @@ L["Cooldowns"] = "Cooldowns:"
 L["No items found."] = "No items found."
 
 -- =====================================================================
--- 7. TBC CLASSIC CURRENCIES & BADGES
+-- 8. TBC CLASSIC CURRENCIES & BADGES
 -- =====================================================================
 L["TBC PvE & PvP Badges:"] = "TBC PvE & PvP Badges:"
 L["Badge of Justice"] = "Badge of Justice"
@@ -248,7 +291,7 @@ L["Alterac Valley Mark of Honor"] = "Alterac Valley Mark of Honor"
 L["Eye of the Storm Mark of Honor"] = "Eye of the Storm Mark of Honor"
 
 -- =====================================================================
--- 8. RETAIL MIDNIGHT CURRENCIES & DELVES
+-- 9. RETAIL MIDNIGHT CURRENCIES & DELVES
 -- =====================================================================
 L["Catalyst Charges:"] = true
 L["PvE Crests:"] = true
@@ -289,7 +332,7 @@ L["Level"] = true
 L["Season Progress:"] = true
 
 -- =====================================================================
--- 9. ALTS DASHBOARD
+-- 10. ALTS DASHBOARD
 -- =====================================================================
 L["Class"] = true
 L["Name"] = true
@@ -311,7 +354,7 @@ L["Playtime (Account): |cffdddddd%s|r   |   Total Gold: |cff00ffd2%s|r"] = "Play
 L["Characters: |cff00ffd2%d|r"] = "Characters: |cff00ffd2%d|r"
 
 -- =====================================================================
--- 10. DATATEXT & MAP PINS
+-- 11. DATATEXT & MAP PINS
 -- =====================================================================
 L["Left Click:"] = "Left-Click:"
 L["Toggle Microbar"] = "Toggle Microbar"
