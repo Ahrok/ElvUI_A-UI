@@ -4,7 +4,44 @@ local DT = E:GetModule('DataTexts')
 local isProcessing = {}
 
 -- =====================================================================
--- HILFSFUNKTIONEN
+-- 1. DEFAULTS
+-- =====================================================================
+P["AUI"] = P["AUI"] or {}
+P["AUI"]["coloring"] = P["AUI"]["coloring"] or {}
+P["AUI"]["coloring"]["borders"] = P["AUI"]["coloring"]["borders"] or {}
+
+-- Defaults für Character Frame
+P["AUI"]["coloring"]["borders"]["character"] = {
+    enable = false,
+    colorMode = "CLASS", -- "CLASS", "CLASS_GRADIENT", "CUSTOM", "GRADIENT"
+    orientation = "HORIZONTAL",
+    invert = false,
+    color1 = { r = 1, g = 1, b = 1 },
+    color2 = { r = 0.3, g = 0.3, b = 0.3 },
+}
+
+-- Defaults für Stats Panel
+P["AUI"]["coloring"]["borders"]["statsPanel"] = {
+    enable = false,
+    colorMode = "CLASS", -- "CLASS", "CLASS_GRADIENT", "CUSTOM", "GRADIENT"
+    orientation = "HORIZONTAL",
+    invert = false,
+    color1 = { r = 1, g = 1, b = 1 },
+    color2 = { r = 0.3, g = 0.3, b = 0.3 },
+}
+
+-- Defaults für Inspect Frame
+P["AUI"]["coloring"]["borders"]["inspect"] = {
+    enable = false,
+    colorMode = "TARGET_CLASS", -- "TARGET_CLASS", "TARGET_CLASS_GRADIENT", "CLASS", "CLASS_GRADIENT", "CUSTOM", "GRADIENT"
+    orientation = "HORIZONTAL",
+    invert = false,
+    color1 = { r = 1, g = 1, b = 1 },
+    color2 = { r = 0.3, g = 0.3, b = 0.3 },
+}
+
+-- =====================================================================
+-- 2. HILFSFUNKTIONEN
 -- =====================================================================
 local function GetDarkerColor(c, factor)
     return { r = c.r * (factor or 0.35), g = c.g * (factor or 0.35), b = c.b * (factor or 0.35) }
@@ -71,7 +108,7 @@ local function CreateBorderTextures(frame, isThreeColor)
     return frame.auiGradientBorders
 end
 
-local function ApplyGradientBorder(frame, config, isThreeColor)
+local function ApplyGradientBorder(frame, config, isThreeColor, targetUnit)
     if not frame then return end
     local target = frame.backdrop or frame
     if not target then return end
@@ -90,7 +127,17 @@ local function ApplyGradientBorder(frame, config, isThreeColor)
     
     local c1, c2, c3
     local mode = config.colorMode
-    if mode == "CLASS" then
+    
+    if mode == "TARGET_CLASS" or mode == "TARGET_CLASS_GRADIENT" then
+        local unitClass = targetUnit and select(2, UnitClass(targetUnit))
+        local cc = unitClass and E:ClassColor(unitClass, true) or E:ClassColor(E.myclass, true)
+        if mode == "TARGET_CLASS" then
+            c1 = cc; c2 = cc; c3 = cc
+        else
+            local dc = GetDarkerColor(cc, 0.35)
+            if isThreeColor then c1, c2, c3 = dc, cc, dc else c1, c2, c3 = cc, dc, dc end
+        end
+    elseif mode == "CLASS" then
         c1 = E:ClassColor(E.myclass, true); c2 = c1; c3 = c1
     elseif mode == "CUSTOM" then
         c1 = config.color1; c2 = config.color2 or c1; c3 = config.color3 or c1
@@ -143,8 +190,31 @@ local function ApplyGradientBorder(frame, config, isThreeColor)
 end
 
 -- =====================================================================
--- UPDATE CONTROLLER
+-- 3. UPDATE CONTROLLER
 -- =====================================================================
+function AUI:UpdateCharacterBorders()
+    local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders
+    if _G["CharacterFrame"] then
+        ApplyGradientBorder(_G["CharacterFrame"], db and db.character, false)
+    end
+end
+
+function AUI:UpdateStatsPanelBorders()
+    local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders
+    if _G["AUI_CharacterStatsFrame"] then
+        ApplyGradientBorder(_G["AUI_CharacterStatsFrame"], db and db.statsPanel, false)
+    end
+end
+
+function AUI:UpdateInspectBorders(unit)
+    local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders
+    local inspectConfig = db and db.inspect
+    local targetUnit = unit or (InspectFrame and InspectFrame.unit) or "target"
+    if _G["InspectFrame"] then
+        ApplyGradientBorder(_G["InspectFrame"], inspectConfig, false, targetUnit)
+    end
+end
+
 function AUI:UpdateEditBoxColors()
     local db = E.db.AUI and E.db.AUI.coloring and E.db.AUI.coloring.borders
     local leftChat = db and db.leftChat
@@ -172,11 +242,14 @@ function AUI:UpdateBorderColors()
     
     if _G["AUI_AltInfoFrame"] then ApplyGradientBorder(_G["AUI_AltInfoFrame"], db.alts, true) end
 
+    AUI:UpdateCharacterBorders()
+    AUI:UpdateStatsPanelBorders()
+    AUI:UpdateInspectBorders()
     AUI:UpdateEditBoxColors()
 end
 
 -- =====================================================================
--- DATATEXT FARBEN
+-- 4. DATATEXT FARBEN
 -- =====================================================================
 local function ProcessSegment(segment, c1, c2)
     if segment == "" then return "" end
@@ -283,8 +356,164 @@ function AUI:ColorDatatextFonts()
 end
 
 -- =====================================================================
--- HOOKS & INIT
+-- 5. OPTIONEN-EINBINDUNG IM COLORING-MENÜ
 -- =====================================================================
+local function CreateBorderGroupOption(key, nameStr, orderIdx, updateFunc)
+    return {
+        order = orderIdx,
+        type = "group",
+        name = nameStr,
+        get = function(info) return E.db.AUI.coloring.borders[key][info[#info]] end,
+        set = function(info, value)
+            E.db.AUI.coloring.borders[key][info[#info]] = value
+            updateFunc()
+        end,
+        args = {
+            enable = {
+                order = 1,
+                type = "toggle",
+                name = L["Enable"] or "Aktivieren",
+                width = "full",
+            },
+            colorMode = {
+                order = 2,
+                type = "select",
+                name = L["Color Mode"] or "Farbmodus",
+                values = key == "inspect" and {
+                    ["TARGET_CLASS"] = L["Target Class Color"] or "Klassenfarbe des Ziels",
+                    ["TARGET_CLASS_GRADIENT"] = L["Target Class Gradient"] or "Klassen-Verlauf des Ziels",
+                    ["CLASS"] = "Eigene Klassenfarbe",
+                    ["CLASS_GRADIENT"] = "Eigener Klassen-Verlauf",
+                    ["CUSTOM"] = "Benutzerdefiniert",
+                    ["GRADIENT"] = "Farbverlauf",
+                } or {
+                    ["CLASS"] = "Klassenfarbe",
+                    ["CLASS_GRADIENT"] = "Klassen-Verlauf",
+                    ["CUSTOM"] = "Benutzerdefiniert",
+                    ["GRADIENT"] = "Farbverlauf",
+                },
+            },
+            orientation = {
+                order = 3,
+                type = "select",
+                name = "Verlauf-Ausrichtung",
+                disabled = function() 
+                    local m = E.db.AUI.coloring.borders[key].colorMode
+                    return m ~= "GRADIENT" and m ~= "CLASS_GRADIENT" and m ~= "TARGET_CLASS_GRADIENT"
+                end,
+                values = {
+                    ["HORIZONTAL"] = "Horizontal",
+                    ["VERTICAL"] = "Vertikal",
+                },
+            },
+            invert = {
+                order = 4,
+                type = "toggle",
+                name = "Verlauf umkehren",
+                disabled = function() 
+                    local m = E.db.AUI.coloring.borders[key].colorMode
+                    return m ~= "GRADIENT" and m ~= "CLASS_GRADIENT" and m ~= "TARGET_CLASS_GRADIENT"
+                end,
+            },
+            color1 = {
+                order = 5,
+                type = "color",
+                name = "Farbe 1",
+                disabled = function() 
+                    local m = E.db.AUI.coloring.borders[key].colorMode
+                    return m ~= "CUSTOM" and m ~= "GRADIENT"
+                end,
+                get = function(info)
+                    local c = E.db.AUI.coloring.borders[key].color1
+                    return c.r, c.g, c.b, c.a
+                end,
+                set = function(info, r, g, b)
+                    local c = E.db.AUI.coloring.borders[key].color1
+                    c.r, c.g, c.b = r, g, b
+                    updateFunc()
+                end,
+            },
+            color2 = {
+                order = 6,
+                type = "color",
+                name = "Farbe 2",
+                disabled = function() 
+                    local m = E.db.AUI.coloring.borders[key].colorMode
+                    return m ~= "GRADIENT"
+                end,
+                get = function(info)
+                    local c = E.db.AUI.coloring.borders[key].color2
+                    return c.r, c.g, c.b, c.a
+                end,
+                set = function(info, r, g, b)
+                    local c = E.db.AUI.coloring.borders[key].color2
+                    c.r, c.g, c.b = r, g, b
+                    updateFunc()
+                end,
+            },
+        },
+    }
+end
+
+local function InjectColoringOptions()
+    if not E.Options.args.AUI or not E.Options.args.AUI.args then return end
+    local coloringGroup = E.Options.args.AUI.args.coloring
+    if not coloringGroup or not coloringGroup.args then return end
+
+    local targetArgs = coloringGroup.args
+    if coloringGroup.args.borders and coloringGroup.args.borders.args then
+        targetArgs = coloringGroup.args.borders.args
+    end
+
+    if not targetArgs.character then
+        targetArgs.character = CreateBorderGroupOption("character", L["Character Frame"] or "Charakterfenster", 7, function() AUI:UpdateCharacterBorders() end)
+    end
+
+    if not targetArgs.statsPanel then
+        targetArgs.statsPanel = CreateBorderGroupOption("statsPanel", L["Stats Panel"] or "Stats Panel", 8, function() AUI:UpdateStatsPanelBorders() end)
+    end
+
+    if not targetArgs.inspect then
+        targetArgs.inspect = CreateBorderGroupOption("inspect", L["Inspect Frame"] or "Inspect-Fenster", 9, function() AUI:UpdateInspectBorders() end)
+    end
+end
+
+-- =====================================================================
+-- 6. HOOKS & INITIALISIERUNG
+-- =====================================================================
+local function HookFrames()
+    if _G.CharacterFrame then
+        _G.CharacterFrame:HookScript("OnShow", function()
+            AUI:UpdateCharacterBorders()
+            AUI:UpdateStatsPanelBorders()
+        end)
+    end
+
+    local function SetupInspectHook()
+        if _G.InspectFrame and not _G.InspectFrame.auiHooked then
+            _G.InspectFrame:HookScript("OnShow", function(self)
+                AUI:UpdateInspectBorders(self.unit)
+            end)
+            _G.InspectFrame.auiHooked = true
+        end
+    end
+
+    SetupInspectHook()
+
+    local inspectWatcher = CreateFrame("Frame")
+    inspectWatcher:RegisterEvent("ADDON_LOADED")
+    inspectWatcher:RegisterEvent("INSPECT_READY")
+    inspectWatcher:SetScript("OnEvent", function(_, event, arg1)
+        if event == "ADDON_LOADED" and arg1 == "Blizzard_InspectUI" then
+            SetupInspectHook()
+        elseif event == "INSPECT_READY" then
+            if _G.InspectFrame and _G.InspectFrame:IsShown() then
+                AUI:UpdateInspectBorders(_G.InspectFrame.unit)
+            end
+        end
+    end)
+end
+
 local function HookChatEditBox()
     local CH = E:GetModule('Chat')
     if CH and CH.UpdateEditBoxColor and not CH.auiEditBoxHooked then
@@ -298,14 +527,18 @@ local function HookChatEditBox()
     end
 end
 
+hooksecurefunc(AUI, "InsertOptions", InjectColoringOptions)
+
 local ColorTracker = CreateFrame("Frame")
 ColorTracker:RegisterEvent("PLAYER_ENTERING_WORLD")
 ColorTracker:SetScript("OnEvent", function(self, event)
     self:UnregisterEvent("PLAYER_ENTERING_WORLD")
     HookChatEditBox()
-    E:Delay(3, function() 
+    HookFrames()
+    E:Delay(1, function() 
         AUI:ColorDatatextFonts() 
         AUI:UpdateBorderColors()
+        InjectColoringOptions()
         if DT and DT.LoadDataTexts then DT:LoadDataTexts() end
     end)
     if DT and DT.LoadDataTexts then hooksecurefunc(DT, 'LoadDataTexts', function() AUI:ColorDatatextFonts() end) end

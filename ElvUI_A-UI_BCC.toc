@@ -28,3 +28,4 @@ modules\map.lua
 modules\teleporter.lua
 modules\coloring.lua
 modules\alts.lua
+modules\stats.lua

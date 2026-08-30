@@ -150,6 +150,16 @@ L["Vertical (Top -> Bottom)"] = true
 L["Colorize EditBox"] = true
 L["Apply the same border coloring to the chat editbox."] = true
 L["Alts Dashboard"] = true
+L["Character Frame Borders"] = true
+L["Inspect Frame Borders"] = true
+L["Target Class Color"] = true
+L["Target Class Gradient"] = true
+L["Color Mode"] = true
+L["Character Frame"] = true
+L["Inspect Frame"] = true
+L["Character Frame"] = true
+L["Stats Panel"] = true
+L["Inspect Frame"] = true
 
 -- =====================================================================
 -- 5. BUTTON LABELS & CURATED ICON PRESETS
@@ -421,3 +431,202 @@ L["Catalyst"] = "Creation Catalyst"
 L["Catalyst Desc"] = "Convert gear into Tier set pieces"
 L["Delve Hub"] = "Delve Headquarters"
 L["Delve Hub Desc"] = "Valeera & Brann Delve Hub"
+
+-- =====================================================================
+-- 12. CHARACTER STATS MODULE
+-- =====================================================================
+L["Character-Stats Panel"] = true
+L["Displays a seamless ElvUI overview for all stats next to the character frame."] = true
+L["Item Level on Equipment"] = true
+L["Displays the item level of each equipment slot in quality color."] = true
+
+-- Categories
+L["Attributes"] = true
+L["Melee"] = true
+L["Ranged"] = true
+L["Spell"] = true
+L["Defense"] = true
+L["General"] = true
+
+-- Attributes
+L["Strength"] = true
+L["Agility"] = true
+L["Stamina"] = true
+L["Intellect"] = true
+L["Spirit"] = true
+
+-- Stats
+L["Damage"] = true
+L["Attack Speed"] = true
+L["Attack Power"] = true
+L["Hit Chance"] = true
+L["Critical Strike"] = true
+L["Expertise"] = true
+L["Spell Power"] = true
+L["Healing"] = true
+L["Spell Crit"] = true
+L["Spell Hit"] = true
+L["Spell Haste"] = true
+L["Mana Regen (MP5)"] = true
+L["Armor"] = true
+L["Dodge"] = true
+L["Parry"] = true
+L["Block"] = true
+L["Resilience"] = true
+L["Arcane"] = true
+L["Fire"] = true
+L["Frost"] = true
+L["Holy"] = true
+L["Nature"] = true
+L["Shadow"] = true
+L["Avoidance"] = true
+L["Crit Immunity"] = true
+L["Unhittable"] = true
+L["Immune"] = true
+L["Categories"] = true
+L["Show Attributes"] = true
+L["Show Melee"] = true
+L["Show Ranged"] = true
+L["Show Spell"] = true
+L["Show Defense"] = true
+L["Show General"] = true
+L["Durability on Equipment"] = true
+L["Displays durability percentage on equipment icons with dynamic color."] = true
+L["Repair Cost on Equipment"] = true
+L["Displays repair costs on equipment icons."] = true
+L["Repair Cost:"] = true
+L["Hide Blizzard Stats"] = true
+L["Hides the default Classic character stat dropdowns and stat text lines."] = true
+L["Resistances"] = true
+L["Show Resistances"] = true
+L["Resistance Icons"] = true
+L["Show Resistance Icons"] = true
+L["Displays the 5 resistance icons on the character model."] = true
+L["Icon Orientation"] = true
+L["Choose between vertical or horizontal layout for resistance icons."] = true
+L["Vertical"] = true
+L["Horizontal"] = true
+L["Show Enchants on Equipment"] = true
+L["Displays the applied enchant name next to enchanted items."] = true
+L["Missing Enchant Warning"] = true
+L["Displays a warning text next to items missing an enchant."] = true
+L["Missing Enchant Border"] = true
+L["Colors the equipment slot border red if the item lacks an enchant."] = true
+L["Missing"] = true
+
+-- Module & Menu
+L["Character-Stats Panel"] = true
+L["Displays a seamless ElvUI overview for all stats next to the character frame."] = true
+L["Hide Blizzard Stats"] = true
+L["Hides the default Classic character stat dropdowns and stat text lines."] = true
+
+-- Resistance Icons
+L["Resistance Icons"] = true
+L["Show Resistance Icons"] = true
+L["Displays the 5 resistance icons on the character model."] = true
+L["Icon Orientation"] = true
+L["Choose between vertical or horizontal layout for resistance icons."] = true
+L["Vertical"] = true
+L["Horizontal"] = true
+
+-- Overlays
+L["Equipment Overlays"] = true
+L["Item Level on Equipment"] = true
+L["Displays the item level of each equipment slot in quality color."] = true
+L["Durability on Equipment"] = true
+L["Displays durability percentage on equipment icons with dynamic color."] = true
+L["Repair Cost on Equipment"] = true
+L["Displays repair costs on equipment icons."] = true
+L["Show Enchants on Equipment"] = true
+L["Displays the applied enchant name next to enchanted items."] = true
+L["Missing Enchant Warning"] = true
+L["Displays a warning text next to items missing an enchant."] = true
+L["Missing Enchant Border"] = true
+L["Colors the equipment slot border red if the item lacks an enchant."] = true
+L["Missing"] = true
+
+-- Categories
+L["Categories"] = true
+L["Attributes"] = true
+L["Show Attributes"] = true
+L["Melee"] = true
+L["Show Melee"] = true
+L["Ranged"] = true
+L["Show Ranged"] = true
+L["Spell"] = true
+L["Show Spell"] = true
+L["Defense"] = true
+L["Show Defense"] = true
+L["Resistances"] = true
+L["Show Resistances"] = true
+L["General"] = true
+L["Show General"] = true
+
+-- Stats & Tooltips
+L["Damage"] = true
+L["Attack Speed"] = true
+L["Attack Power"] = true
+L["Hit Chance"] = true
+L["Critical Strike"] = true
+L["Expertise"] = true
+L["Armor"] = true
+L["Dodge"] = true
+L["Parry"] = true
+L["Block"] = true
+L["Resilience"] = true
+L["Crit Immunity"] = true
+L["Avoidance"] = true
+L["Durability:"] = true
+L["Repair Cost:"] = true
+L["Immune"] = true
+
+-- Spell Schools
+L["Holy"] = true
+L["Fire"] = true
+L["Nature"] = true
+L["Frost"] = true
+L["Shadow"] = true
+L["Arcane"] = true
+L["Healing"] = true
+L["Spell Crit"] = true
+L["Spell Hit"] = true
+L["Spell Haste"] = true
+L["Mana Regen (MP5)"] = true
+
+-- Tooltip Formats & Descriptions
+L["Increases attack power by %d."] = true
+L["Increases shield block value by %d (Current total: %d)."] = true
+L["Increases armor by %d.\nIncreases critical strike chance by %.2f%%.\nIncreases dodge chance by %.2f%%."] = true
+L["Increases maximum health by %d HP."] = true
+L["Increases maximum mana by %d.\nIncreases spell critical strike chance by %.2f%%."] = true
+L["Increases health regen out of combat by %.1f HP/sec.\nIncreases mana regen while not casting by %.0f MP5 (While casting: %.0f MP5)."] = true
+L["Damage Range: %d - %d\nAttack Speed: %.2f sec."] = true
+L["Weapon Speed: %.2f seconds per swing."] = true
+L["Increases melee damage dealt by %.1f DPS."] = true
+L["Increases ranged damage dealt by %.1f DPS."] = true
+L["Increases melee hit chance against level %d targets by %.2f%%."] = true
+L["Increases ranged hit chance against level %d targets by %.2f%%."] = true
+L["\nArmor Penetration: %d\nIgnores up to %d enemy armor."] = true
+L["Increases melee critical strike chance by %.2f%%."] = true
+L["Increases ranged critical strike chance by %.2f%%."] = true
+L["Reduces enemy chance to dodge or parry your attacks by %.2f%%."] = true
+L["Increases damage done by %s spells by up to %d."] = true
+L["Increases healing done by spells by up to %d."] = true
+L["Increases spell critical strike chance by %.2f%%."] = true
+L["Increases spell hit chance against level %d targets by %.2f%%."] = true
+L["\nSpell Penetration: %d\nReduces enemy magic resistances by %d."] = true
+L["Increases spell casting speed by %.2f%%."] = true
+L["While not casting: %.0f MP5\nWhile casting: %.0f MP5"] = true
+L["Reduces physical damage taken from level %d enemies by %.2f%%."] = true
+L["Defense Rating: %d\nIncreases Dodge, Parry, Block and Miss chance by %.2f%%.\nReduces chance to be critically hit by %.2f%%."] = true
+L["Dodge Rating: %d"] = true
+L["Parry Rating: %d"] = true
+L["Block Rating: %d\nBlock Value: %d damage"] = true
+L["Reduces chance to be critically hit by %.2f%%.\nReduces damage taken from critical strikes by %.2f%%."] = true
+L["Crit Immunity (vs Level +3 Raid Boss)"] = true
+L["Required: 5.60%%\nFrom Defense: %.2f%%\nFrom Resilience: %.2f%%\nTotal: %.2f%%"] = true
+L["Total Avoidance"] = true
+L["Boss Miss: %.2f%%\nDodge: %.2f%%\nParry: %.2f%%\nBlock: %.2f%%\n-----------------\nTotal: %.2f%%"] = true
+L["Base: %d | Bonus: +%d | Penalty: %d"] = true
+L["Current: %d / %d (%.1f%%)"] = true
+L["Total repair cost of all equipped items: %s"] = true

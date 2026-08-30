@@ -32,3 +32,4 @@ modules\teleporter.lua
 modules\delves.lua
 modules\coloring.lua
 modules\alts.lua
+modules\stats.lua
