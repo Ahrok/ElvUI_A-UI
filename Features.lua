@@ -1,7 +1,7 @@
 local E, L, V, P, G = unpack(ElvUI)
 local AUI = E:GetModule('A-UI')
-
 local LCG = LibStub('LibCustomGlow-1.0', true)
+local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 
 -----------------------------------------------------------------------
 -- HELPER FUNKTIONEN
@@ -21,6 +21,7 @@ local function GetButtonData(btnName)
 end
 
 local function StartGlow(frame, style)
+    if not frame then return end
     if style == "pixel" and LCG then
         LCG.PixelGlow_Start(frame, {1, 0.82, 0, 0.95}, 8, 0.25, 6, 2)
     elseif style == "autocast" and LCG then
@@ -33,6 +34,7 @@ local function StartGlow(frame, style)
 end
 
 local function StopGlow(frame)
+    if not frame then return end
     if LCG then
         LCG.PixelGlow_Stop(frame)
         LCG.AutoCastGlow_Stop(frame)
@@ -45,13 +47,21 @@ end
 -- ALLE GLOW UPDATES
 -----------------------------------------------------------------------
 function AUI:UpdateTalentGlow()
-    local data = GetButtonData("TalentMicroButton")
+    local data = GetButtonData("PlayerSpellsMicroButton") or GetButtonData("TalentMicroButton")
     if not data or not data.texFrame then return end
     StopGlow(data.texFrame)
-
-    local unspent = (C_ClassTalents.HasUnspentTalentPoints() or C_ClassTalents.HasUnspentHeroTalentPoints())
+    
+    local unspent = false
+    if isRetail and C_ClassTalents and C_ClassTalents.HasUnspentTalentPoints then
+        unspent = (C_ClassTalents.HasUnspentTalentPoints() or (C_ClassTalents.HasUnspentHeroTalentPoints and C_ClassTalents.HasUnspentHeroTalentPoints()))
+    elseif GetNumUnspentTalents then
+        unspent = (GetNumUnspentTalents() or 0) > 0
+    elseif UnitCharacterPoints then
+        unspent = (UnitCharacterPoints("player") or 0) > 0
+    end
+    
     if E.db.AUI.microbar.talentGlow and unspent then
-        StartGlow(data.texFrame, E.db.AUI.microbar.talentGlowStyle)
+        StartGlow(data.texFrame, E.db.AUI.microbar.glowType or "pixel")
         data.isGlowing = true
     else
         data.isGlowing = false
@@ -62,10 +72,10 @@ function AUI:UpdateMailGlow()
     local data = GetButtonData("AUI_MailButton")
     if not data or not data.texFrame then return end
     StopGlow(data.texFrame)
-
+    
     local hasMail = HasNewMail()
     if E.db.AUI.microbar.showMailButton and E.db.AUI.microbar.mailGlow and hasMail then
-        StartGlow(data.texFrame, E.db.AUI.microbar.mailGlowStyle)
+        StartGlow(data.texFrame, E.db.AUI.microbar.glowType or "pixel")
         data.isMailGlowing = true
     else
         data.isMailGlowing = false
@@ -75,19 +85,19 @@ function AUI:UpdateMailGlow()
         data.iconTex:SetDesaturated(false)
         data.iconTex:SetVertexColor(E.db.AUI.microbar.mailColor.r, E.db.AUI.microbar.mailColor.g, E.db.AUI.microbar.mailColor.b)
     else
-        AUI:UpdateIcons() -- Stellt Standard-Farben wieder her
+        AUI:UpdateIcons()
     end
-
-    if E.db.AUI.microbar.hideMailEmpty then AUI:UpdateMicrobar() end
+    
+    if E.db.AUI.microbar.hideMailEmpty and AUI.UpdateMicrobar then AUI:UpdateMicrobar() end
 end
 
 function AUI:UpdateVaultGlow()
+    if not isRetail then return end
     local data = GetButtonData("EJMicroButton")
     if not data or not data.texFrame then return end
     StopGlow(data.texFrame)
-
     if E.db.AUI.microbar.vaultGlow and C_WeeklyRewards and C_WeeklyRewards.HasAvailableRewards() then
-        StartGlow(data.texFrame, E.db.AUI.microbar.vaultGlowStyle)
+        StartGlow(data.texFrame, E.db.AUI.microbar.glowType or "pixel")
     end
 end
 
@@ -95,24 +105,23 @@ function AUI:UpdateCalendarGlow()
     local data = GetButtonData("AUI_CalendarButton")
     if not data or not data.texFrame then return end
     StopGlow(data.texFrame)
-
-    local pending = (C_Calendar and C_Calendar.GetNumPendingInvites()) or 0
+    local pending = (C_Calendar and C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites()) or 0
     if E.db.AUI.microbar.calendarGlow and pending > 0 then
-        StartGlow(data.texFrame, E.db.AUI.microbar.calendarGlowStyle)
+        StartGlow(data.texFrame, E.db.AUI.microbar.glowType or "pixel")
     end
 end
 
 function AUI:UpdateCollectionsGlow()
+    if not isRetail then return end
     local data = GetButtonData("CollectionsMicroButton")
     if not data or not data.texFrame then return end
     StopGlow(data.texFrame)
-
     local needsFanfare = false
-    if C_MountJournal and C_MountJournal.GetNumMountsNeedingFanfare() > 0 then needsFanfare = true end
-    if C_PetJournal and C_PetJournal.GetNumPetsNeedingFanfare() > 0 then needsFanfare = true end
+    if C_MountJournal and C_MountJournal.GetNumMountsNeedingFanfare and C_MountJournal.GetNumMountsNeedingFanfare() > 0 then needsFanfare = true end
+    if C_PetJournal and C_PetJournal.GetNumPetsNeedingFanfare and C_PetJournal.GetNumPetsNeedingFanfare() > 0 then needsFanfare = true end
     
     if E.db.AUI.microbar.collectionsGlow and needsFanfare then
-        StartGlow(data.texFrame, E.db.AUI.microbar.collectionsGlowStyle)
+        StartGlow(data.texFrame, E.db.AUI.microbar.glowType or "pixel")
     end
 end
 
@@ -125,7 +134,7 @@ function AUI:UpdateAllGlows()
 end
 
 -----------------------------------------------------------------------
--- FISH-EYE HOVER (Pop-Up Effekt)
+-- FISH-EYE HOVER
 -----------------------------------------------------------------------
 function AUI:SetupFisheye()
     if not AUI.buttons then return end
@@ -153,19 +162,27 @@ end
 -----------------------------------------------------------------------
 -- INITIALISIERUNG DER FEATURES
 -----------------------------------------------------------------------
+local function SafeRegister(event, handler)
+    pcall(function() AUI:RegisterEvent(event, handler) end)
+end
+
 function AUI:InitFeatures()
-    AUI:RegisterEvent("TRAIT_CONFIG_UPDATED", "UpdateTalentGlow")
-    AUI:RegisterEvent("PLAYER_TALENT_UPDATE", "UpdateTalentGlow")
+    -- Universelle & Retail Events sicher registrieren
+    SafeRegister("TRAIT_CONFIG_UPDATED", "UpdateTalentGlow")
+    SafeRegister("PLAYER_TALENT_UPDATE", "UpdateTalentGlow")
+    SafeRegister("CHARACTER_POINTS_CHANGED", "UpdateTalentGlow")
     
-    AUI:RegisterEvent("UPDATE_PENDING_MAIL", "UpdateMailGlow")
-    AUI:RegisterEvent("MAIL_SHOW", "UpdateMailGlow")
-    AUI:RegisterEvent("MAIL_CLOSED", "UpdateMailGlow")
+    SafeRegister("UPDATE_PENDING_MAIL", "UpdateMailGlow")
+    SafeRegister("MAIL_SHOW", "UpdateMailGlow")
+    SafeRegister("MAIL_CLOSED", "UpdateMailGlow")
     
-    AUI:RegisterEvent("WEEKLY_REWARDS_UPDATE", "UpdateVaultGlow")
-    AUI:RegisterEvent("CALENDAR_UPDATE_PENDING_INVITES", "UpdateCalendarGlow")
-    AUI:RegisterEvent("PET_JOURNAL_LIST_UPDATE", "UpdateCollectionsGlow")
-    AUI:RegisterEvent("MOUNT_JOURNAL_USABILITY_CHANGED", "UpdateCollectionsGlow")
-    AUI:RegisterEvent("HEIRLOOMS_UPDATED", "UpdateCollectionsGlow")
+    if isRetail then
+        SafeRegister("WEEKLY_REWARDS_UPDATE", "UpdateVaultGlow")
+        SafeRegister("CALENDAR_UPDATE_PENDING_INVITES", "UpdateCalendarGlow")
+        SafeRegister("PET_JOURNAL_LIST_UPDATE", "UpdateCollectionsGlow")
+        SafeRegister("MOUNT_JOURNAL_USABILITY_CHANGED", "UpdateCollectionsGlow")
+        SafeRegister("HEIRLOOMS_UPDATED", "UpdateCollectionsGlow")
+    end
     
     AUI:SetupFisheye()
     
@@ -175,7 +192,7 @@ function AUI:InitFeatures()
 end
 
 -----------------------------------------------------------------------
--- ACE-GUI TRANSFER FENSTER (VERBESSERT FÜR ELVUI)
+-- ACE-GUI TRANSFER FENSTER
 -----------------------------------------------------------------------
 function AUI:ShowTransferWindow(isExport, exportString)
     local AceGUI = LibStub("AceGUI-3.0")
@@ -190,7 +207,6 @@ function AUI:ShowTransferWindow(isExport, exportString)
         frame:SetLayout("Fill")
         local editBox = AceGUI:Create("MultiLineEditBox")
         editBox:SetFullWidth(true)
-        -- Zeigt das aktuell aktive ElvUI Profil an!
         editBox:SetLabel((L["Profile: "] or "Profil: ") .. "|cff00ffd2" .. E.data:GetCurrentProfile() .. "|r\n\n" .. (L["Copy the string with Ctrl+C:"] or "Kopiere den Text mit Strg+C:"))
         editBox:SetText(exportString)
         if editBox.DisableButton then editBox:DisableButton(true) end
@@ -227,7 +243,7 @@ function AUI:ShowTransferWindow(isExport, exportString)
 end
 
 -----------------------------------------------------------------------
--- PROFIL EXPORT / IMPORT LOGIK MIT ERROR HANDLING
+-- PROFIL EXPORT / IMPORT LOGIK
 -----------------------------------------------------------------------
 function AUI:ExportProfile()
     local profileData = E.db.AUI.microbar
@@ -269,7 +285,6 @@ function AUI:ImportProfile(importString)
             if decompressed then success, profile = LibSerialize:Deserialize(decompressed) end
         end
     end
-
     if not success or not profile then
         local decSuccess, data = E:Config_Decode(importString)
         if decSuccess and data then success, profile = E:Deserialize(data) end
@@ -277,7 +292,6 @@ function AUI:ImportProfile(importString)
     
     if success and profile then
         AUIPrint(L["Settings were imported into the active profile."] or "Einstellungen wurden erfolgreich ins aktuelle Profil importiert.")
-        
         E.db.AUI.microbar = profile
         E:StaticPopup_Show("PRIVATE_RL")
     else

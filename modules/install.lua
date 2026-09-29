@@ -2,8 +2,19 @@ local E, L, V, P, G = unpack(ElvUI)
 local AUI = E:GetModule('A-UI')
 local PI = E:GetModule('PluginInstaller')
 
+local isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
+
+local function IsAddonActive(id)
+    if C_AddOns and C_AddOns.IsAddOnLoaded then
+        return C_AddOns.IsAddOnLoaded(id)
+    elseif IsAddOnLoaded then
+        return IsAddOnLoaded(id)
+    end
+    return false
+end
+
 -- =====================================================================
--- SEITE 1: BEGRÜßUNG
+-- SEITE 1: BEGRÜSSUNG
 -- =====================================================================
 local function Step1()
     PluginInstallFrame.SubTitle:Show()
@@ -34,16 +45,18 @@ local function Step2()
     PluginInstallFrame.Desc1:Show()
     PluginInstallFrame.Desc1:SetText(L["A-UI uses synergies with other ElvUI plugins. Here is the status of your system:"])
     
-    -- Wir prüfen die Addons über die WoW-API
     local plugins = {
         { id = "ElvUI_EltreumUI", name = "Eltreum UI" },
-        { id = "ElvUI_WindTools", name = "WindTools" },
         { id = "ElvUI_NutsAndBolts", name = "Nuts & Bolts" }
     }
     
+    if isRetail then
+        table.insert(plugins, 2, { id = "ElvUI_WindTools", name = "WindTools" })
+    end
+    
     local statusText = ""
     for _, p in ipairs(plugins) do
-        if C_AddOns.IsAddOnLoaded(p.id) then
+        if IsAddonActive(p.id) then
             statusText = statusText .. "|TInterface\\RaidFrame\\ReadyCheck-Ready:16|t |cff00ff00" .. p.name .. (L[" (Installed & Active)"] or " (Installiert & Aktiv)") .. "|r\n"
         else
             statusText = statusText .. "|TInterface\\RaidFrame\\ReadyCheck-NotReady:16|t |cffff0000" .. p.name .. (L[" (Missing - Recommended!)"] or " (Fehlt - Empfohlen!)") .. "|r\n"
@@ -64,16 +77,16 @@ end
 -- SEITE 3: DAS SMARTE LAYOUT
 -- =====================================================================
 local function InstallLayout()
-    -- 1. Checks durchführen
-    local hasEltruism = C_AddOns.IsAddOnLoaded("ElvUI_EltreumUI")
-    local hasWindTools = C_AddOns.IsAddOnLoaded("ElvUI_WindTools")
+    local hasEltruism = IsAddonActive("ElvUI_EltreumUI")
+    local hasWindTools = isRetail and IsAddonActive("ElvUI_WindTools")
+    local hasNutsAndBolts = IsAddonActive("ElvUI_NutsAndBolts")
     
     -- =====================================================================
     -- 1. DATATEXT PANELS ERSCHAFFEN (ACCOUNTWEIT / GLOBAL)
     -- =====================================================================
     E.global.datatexts = E.global.datatexts or {}
     E.global.datatexts.customPanels = E.global.datatexts.customPanels or {}
-
+    
     -- Panel: A-UI_Bot-Mid_L (2 Slots)
     if not E.global.datatexts.customPanels["A-UI_Bot-Mid_L"] then
         E.global.datatexts.customPanels["A-UI_Bot-Mid_L"] = {
@@ -86,9 +99,9 @@ local function InstallLayout()
             ["backdrop"] = false,
             ["panelTransparency"] = false,
             ["fonts"] = {
-                    ["enable"] = true,
-                    ["fontOutline"] = "SHADOWOUTLINE",
-                    ["fontSize"] = 14,
+                ["enable"] = true,
+                ["fontOutline"] = "SHADOWOUTLINE",
+                ["fontSize"] = 14,
             },
             ["border"] = false,
         }
@@ -157,7 +170,8 @@ local function InstallLayout()
     -- =====================================================================
     -- 2. PROFIL-EXPORT BEFÜLLUNG
     -- =====================================================================
-
+    E.db["datatexts"] = E.db["datatexts"] or {}
+    E.db["datatexts"]["panels"] = E.db["datatexts"]["panels"] or {}
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"] = E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"] or {}
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_R"] = E.db["datatexts"]["panels"]["A-UI_Bot-Mid_R"] or {}
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_Time"] = E.db["datatexts"]["panels"]["A-UI_Bot-Mid_Time"] or {}
@@ -240,70 +254,94 @@ local function InstallLayout()
         E.db["ElvUI_EltreumUI"]["unitframes"]["thinmodeaurabars"] = true
         E.db["ElvUI_EltreumUI"]["unitframes"]["uftextureversion"] = "V2"
     end
-    
-    if C_AddOns.IsAddOnLoaded("ElvUI_NutsAndBolts") and E.db["NutsAndBolts"] then
+
+    if hasNutsAndBolts and E.db["NutsAndBolts"] then
+        E.db["NutsAndBolts"]["ElvUIPanels"] = E.db["NutsAndBolts"]["ElvUIPanels"] or {}
+        E.db["NutsAndBolts"]["ElvUIPanels"]["bottom"] = E.db["NutsAndBolts"]["ElvUIPanels"]["bottom"] or {}
         E.db["NutsAndBolts"]["ElvUIPanels"]["bottom"]["height"] = 26
         E.db["NutsAndBolts"]["ElvUIPanels"]["bottom"]["shadows"] = true
+        E.db["NutsAndBolts"]["ObjectiveTracker"] = E.db["NutsAndBolts"]["ObjectiveTracker"] or {}
         E.db["NutsAndBolts"]["ObjectiveTracker"]["enable"] = true
     end
 
     if hasWindTools and E.db["WT"] then
+        E.db["WT"]["announcement"] = E.db["WT"]["announcement"] or {}
         E.db["WT"]["announcement"]["enable"] = false
+        E.db["WT"]["announcement"]["keystone"] = E.db["WT"]["announcement"]["keystone"] or {}
         E.db["WT"]["announcement"]["keystone"]["enable"] = false
+        E.db["WT"]["announcement"]["utility"] = E.db["WT"]["announcement"]["utility"] or {}
         E.db["WT"]["announcement"]["utility"]["enable"] = false
+        E.db["WT"]["combat"] = E.db["WT"]["combat"] or {}
+        E.db["WT"]["combat"]["combatAlert"] = E.db["WT"]["combat"]["combatAlert"] or {}
         E.db["WT"]["combat"]["combatAlert"]["animation"] = false
         E.db["WT"]["combat"]["combatAlert"]["enable"] = false
         E.db["WT"]["combat"]["combatAlert"]["text"] = false
+        E.db["WT"]["combat"]["raidMarkers"] = E.db["WT"]["combat"]["raidMarkers"] or {}
         E.db["WT"]["combat"]["raidMarkers"]["backdrop"] = false
         E.db["WT"]["combat"]["raidMarkers"]["enable"] = false
         E.db["WT"]["combat"]["raidMarkers"]["readyCheck"] = false
+        E.db["WT"]["item"] = E.db["WT"]["item"] or {}
+        E.db["WT"]["item"]["extraItemsBar"] = E.db["WT"]["item"]["extraItemsBar"] or {}
+        E.db["WT"]["item"]["extraItemsBar"]["bar1"] = E.db["WT"]["item"]["extraItemsBar"]["bar1"] or {}
         E.db["WT"]["item"]["extraItemsBar"]["bar1"]["anchor"] = "BOTTOMLEFT"
         E.db["WT"]["item"]["extraItemsBar"]["bar1"]["buttonWidth"] = 32
         E.db["WT"]["item"]["extraItemsBar"]["bar1"]["buttonsPerRow"] = 1
         E.db["WT"]["item"]["extraItemsBar"]["bar1"]["numButtons"] = 7
+        E.db["WT"]["item"]["extraItemsBar"]["bar2"] = E.db["WT"]["item"]["extraItemsBar"]["bar2"] or {}
         E.db["WT"]["item"]["extraItemsBar"]["bar2"]["anchor"] = "BOTTOMLEFT"
         E.db["WT"]["item"]["extraItemsBar"]["bar2"]["buttonWidth"] = 32
         E.db["WT"]["item"]["extraItemsBar"]["bar2"]["buttonsPerRow"] = 1
         E.db["WT"]["item"]["extraItemsBar"]["bar2"]["numButtons"] = 7
+        E.db["WT"]["item"]["extraItemsBar"]["bar3"] = E.db["WT"]["item"]["extraItemsBar"]["bar3"] or {}
         E.db["WT"]["item"]["extraItemsBar"]["bar3"]["anchor"] = "BOTTOMLEFT"
         E.db["WT"]["item"]["extraItemsBar"]["bar3"]["buttonWidth"] = 32
         E.db["WT"]["item"]["extraItemsBar"]["bar3"]["buttonsPerRow"] = 1
         E.db["WT"]["item"]["extraItemsBar"]["bar3"]["numButtons"] = 7
+        E.db["WT"]["item"]["trade"] = E.db["WT"]["item"]["trade"] or {}
         E.db["WT"]["item"]["trade"]["enable"] = false
         E.db["WT"]["item"]["trade"]["thanksButton"] = false
+        E.db["WT"]["misc"] = E.db["WT"]["misc"] or {}
+        E.db["WT"]["misc"]["gameBar"] = E.db["WT"]["misc"]["gameBar"] or {}
         E.db["WT"]["misc"]["gameBar"]["backdrop"] = false
         E.db["WT"]["misc"]["gameBar"]["enable"] = false
+        E.db["WT"]["quest"] = E.db["WT"]["quest"] or {}
+        E.db["WT"]["quest"]["turnIn"] = E.db["WT"]["quest"]["turnIn"] or {}
         E.db["WT"]["quest"]["turnIn"]["enable"] = false
+        E.db["WT"]["social"] = E.db["WT"]["social"] or {}
+        E.db["WT"]["social"]["chatBar"] = E.db["WT"]["social"]["chatBar"] or {}
         E.db["WT"]["social"]["chatBar"]["backdrop"] = true
         E.db["WT"]["social"]["chatBar"]["backdropSpacing"] = 2
         E.db["WT"]["social"]["chatBar"]["buttonHeight"] = 6
         E.db["WT"]["social"]["chatBar"]["buttonWidth"] = 56
         E.db["WT"]["social"]["chatBar"]["enable"] = false
         E.db["WT"]["social"]["chatBar"]["spacing"] = 3
+        E.db["WT"]["social"]["chatText"] = E.db["WT"]["social"]["chatText"] or {}
         E.db["WT"]["social"]["chatText"]["abbreviation"] = "DEFAULT"
+        E.db["WT"]["social"]["emote"] = E.db["WT"]["social"]["emote"] or {}
         E.db["WT"]["social"]["emote"]["size"] = 14
+        E.db["WT"]["unitFrames"] = E.db["WT"]["unitFrames"] or {}
+        E.db["WT"]["unitFrames"]["absorb"] = E.db["WT"]["unitFrames"]["absorb"] or {}
         E.db["WT"]["unitFrames"]["absorb"]["enable"] = true
     end
-    
+
     -- =====================================================================
     -- SICHERHEITS-INITIALISIERUNGEN (Verhindert Abstürze bei frischen Profilen)
     -- =====================================================================
     E.db["movers"] = E.db["movers"] or {}
-    
     E.db["unitframe"] = E.db["unitframe"] or {}
     E.db["unitframe"]["units"] = E.db["unitframe"]["units"] or {}
     
     E.db["unitframe"]["units"]["party"] = E.db["unitframe"]["units"]["party"] or {}
     E.db["unitframe"]["units"]["party"]["customTexts"] = E.db["unitframe"]["units"]["party"]["customTexts"] or {}
     E.db["unitframe"]["units"]["party"]["customTexts"]["A-UI_Status"] = E.db["unitframe"]["units"]["party"]["customTexts"]["A-UI_Status"] or {}
-
+    
     E.db["unitframe"]["units"]["player"] = E.db["unitframe"]["units"]["player"] or {}
     E.db["unitframe"]["units"]["player"]["customTexts"] = E.db["unitframe"]["units"]["player"]["customTexts"] or {}
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"] = E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"] or {}
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"] = E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"] or {}
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"] = E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"] or {}
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"] = E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"] or {}
-
+    
     E.db["unitframe"]["units"]["target"] = E.db["unitframe"]["units"]["target"] or {}
     E.db["unitframe"]["units"]["target"]["customTexts"] = E.db["unitframe"]["units"]["target"]["customTexts"] or {}
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"] = E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"] or {}
@@ -311,18 +349,20 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"] = E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"] or {}
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"] = E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"] or {}
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"] = E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"] or {}
-
+    
     E.db["unitframe"]["units"]["raid1"] = E.db["unitframe"]["units"]["raid1"] or {}
     E.db["unitframe"]["units"]["raid1"]["customTexts"] = E.db["unitframe"]["units"]["raid1"]["customTexts"] or {}
     E.db["unitframe"]["units"]["raid1"]["customTexts"]["A-UI_GrpNR"] = E.db["unitframe"]["units"]["raid1"]["customTexts"]["A-UI_GrpNR"] or {}
-
+    
     E.db["unitframe"]["units"]["raid3"] = E.db["unitframe"]["units"]["raid3"] or {}
     E.db["unitframe"]["units"]["raid3"]["customTexts"] = E.db["unitframe"]["units"]["raid3"]["customTexts"] or {}
     E.db["unitframe"]["units"]["raid3"]["customTexts"]["EltreumRaid3Name"] = E.db["unitframe"]["units"]["raid3"]["customTexts"]["EltreumRaid3Name"] or {}
-    
-    -- =====================================================================
-    E:CopyTable(E.db.actionbar, P.actionbar)
 
+    -- =====================================================================
+    -- HAUPT-PROFILKONFIGURATION
+    -- =====================================================================
+    if P.actionbar and E.db.actionbar then E:CopyTable(E.db.actionbar, P.actionbar) end
+    
     E.db["actionbar"]["bar1"]["buttonSize"] = 38
     E.db["actionbar"]["bar1"]["buttonSpacing"] = 1
     E.db["actionbar"]["bar2"]["buttonSize"] = 38
@@ -347,12 +387,16 @@ local function InstallLayout()
     E.db["actionbar"]["bar6"]["buttonSize"] = 38
     E.db["actionbar"]["bar6"]["buttonSpacing"] = 1
     E.db["actionbar"]["bar6"]["enabled"] = true
-    E.db["actionbar"]["bar6"]["paging"]["DRUID"] = "[bonusbar:1] 13; [bonusbar:3] 14; 6"
+    if E.db["actionbar"]["bar6"]["paging"] then
+        E.db["actionbar"]["bar6"]["paging"]["DRUID"] = "[bonusbar:1] 13; [bonusbar:3] 14; 6"
+    end
     E.db["actionbar"]["bar6"]["visibility"] = "[petbattle] hide; show"
     E.db["actionbar"]["barPet"]["buttonSize"] = 28
     E.db["actionbar"]["barPet"]["buttonsPerRow"] = 10
-    E.db["actionbar"]["extraActionButton"]["clean"] = true
-    E.db["actionbar"]["extraActionButton"]["scale"] = 0.97
+    if E.db["actionbar"]["extraActionButton"] then
+        E.db["actionbar"]["extraActionButton"]["clean"] = true
+        E.db["actionbar"]["extraActionButton"]["scale"] = 0.97
+    end
     E.db["actionbar"]["flashAnimation"] = true
     E.db["actionbar"]["font"] = "Expressway"
     E.db["actionbar"]["microbar"]["buttonHeight"] = 20
@@ -362,7 +406,10 @@ local function InstallLayout()
     E.db["actionbar"]["stanceBar"]["buttonSpacing"] = 1
     E.db["actionbar"]["stanceBar"]["point"] = "BOTTOMLEFT"
     E.db["actionbar"]["transparent"] = true
-    E.db["actionbar"]["vehicleExitButton"]["size"] = 31
+    if E.db["actionbar"]["vehicleExitButton"] then
+        E.db["actionbar"]["vehicleExitButton"]["size"] = 31
+    end
+
     E.db["auras"]["buffs"]["countFont"] = "Expressway"
     E.db["auras"]["buffs"]["countFontSize"] = 14
     E.db["auras"]["buffs"]["size"] = 40
@@ -370,6 +417,7 @@ local function InstallLayout()
     E.db["auras"]["debuffs"]["countFont"] = "Expressway"
     E.db["auras"]["debuffs"]["countFontSize"] = 14
     E.db["auras"]["debuffs"]["size"] = 40
+
     E.db["bags"]["bagSize"] = 40
     E.db["bags"]["bagWidth"] = 660
     E.db["bags"]["bankCombined"] = true
@@ -383,7 +431,7 @@ local function InstallLayout()
     E.db["bags"]["junkIcon"] = true
     E.db["bags"]["moneyCoins"] = false
     E.db["bags"]["moneyFormat"] = "BLIZZARD"
-    E.db["bags"]["scrapIcon"] = true
+    if E.db["bags"]["scrapIcon"] ~= nil then E.db["bags"]["scrapIcon"] = true end
     E.db["bags"]["split"]["bag5"] = true
     E.db["bags"]["split"]["bagSpacing"] = 7
     E.db["bags"]["split"]["bank"] = true
@@ -391,7 +439,8 @@ local function InstallLayout()
     E.db["bags"]["transparent"] = true
     E.db["bags"]["vendorGrays"]["details"] = true
     E.db["bags"]["vendorGrays"]["enable"] = true
-    E.db["bags"]["warbandSize"] = 36
+    if isRetail then E.db["bags"]["warbandSize"] = 36 end
+
     E.db["chat"]["copyChatLines"] = true
     E.db["chat"]["fadeTabsNoBackdrop"] = false
     E.db["chat"]["font"] = "Expressway"
@@ -408,70 +457,89 @@ local function InstallLayout()
     E.db["chat"]["tabSelectorColor"]["g"] = 0.51
     E.db["chat"]["tabSelectorColor"]["r"] = 0.09
     E.db["chat"]["timeStampFormat"] = "%H:%M "
+
     E.db["convertPages"] = true
-    E.db["databars"]["azerite"]["enable"] = false
-    E.db["databars"]["experience"]["width"] = 380
-    E.db["databars"]["reputation"]["enable"] = true
-    E.db["databars"]["threat"]["enable"] = false
-    E.db["databars"]["threat"]["height"] = 24
-    E.db["databars"]["threat"]["width"] = 472
+    if E.db["databars"] and E.db["databars"]["azerite"] then E.db["databars"]["azerite"]["enable"] = false end
+    if E.db["databars"] and E.db["databars"]["experience"] then E.db["databars"]["experience"]["width"] = 380 end
+    if E.db["databars"] and E.db["databars"]["reputation"] then E.db["databars"]["reputation"]["enable"] = true end
+    if E.db["databars"] and E.db["databars"]["threat"] then
+        E.db["databars"]["threat"]["enable"] = false
+        E.db["databars"]["threat"]["height"] = 24
+        E.db["databars"]["threat"]["width"] = 472
+    end
+
     E.db["datatexts"]["font"] = "Expressway"
     E.db["datatexts"]["fontSize"] = 14
-    E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"][1] = "Talent/Loot Specialization"
+    
+    -- Dynamische Datatext-Zuordnung
+    E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"][1] = isRetail and "Talent/Loot Specialization" or "Talents"
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"][2] = "Durability"
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"]["battleground"] = false
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_L"]["enable"] = true
+    
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_R"][1] = "Friends"
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_R"][2] = "Guild"
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_R"]["battleground"] = false
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_R"]["enable"] = true
+    
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_Time"][1] = "Time"
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_Time"]["battleground"] = false
     E.db["datatexts"]["panels"]["A-UI_Bot-Mid_Time"]["enable"] = true
+    
     E.db["datatexts"]["panels"]["A-UI_Bot-R"][1] = "System"
-    E.db["datatexts"]["panels"]["A-UI_Bot-R"][2] = "Quests"
+    E.db["datatexts"]["panels"]["A-UI_Bot-R"][2] = isRetail and "Quests" or "Gold"
     E.db["datatexts"]["panels"]["A-UI_Bot-R"][3] = "Bags"
     E.db["datatexts"]["panels"]["A-UI_Bot-R"][4] = "Gold"
     E.db["datatexts"]["panels"]["A-UI_Bot-R"]["battleground"] = false
     E.db["datatexts"]["panels"]["A-UI_Bot-R"]["enable"] = true
+    
     E.db["datatexts"]["panels"]["LeftChatDataPanel"][3] = "QuickJoin"
     E.db["datatexts"]["panels"]["LeftChatDataPanel"]["enable"] = false
     E.db["datatexts"]["panels"]["LeftChatDataPanel"]["panelTransparency"] = true
-    E.db["datatexts"]["panels"]["MinimapPanel"]["enable"] = false
+    if E.db["datatexts"]["panels"]["MinimapPanel"] then E.db["datatexts"]["panels"]["MinimapPanel"]["enable"] = false end
     E.db["datatexts"]["panels"]["RightChatDataPanel"]["enable"] = false
     E.db["datatexts"]["panels"]["RightChatDataPanel"]["panelTransparency"] = true
+
     E.db["general"]["autoTrackReputation"] = true
     E.db["general"]["backdropfadecolor"]["b"] = 0.054
     E.db["general"]["backdropfadecolor"]["g"] = 0.054
     E.db["general"]["backdropfadecolor"]["r"] = 0.054
-    E.db["general"]["bonusObjectivePosition"] = "AUTO"
-    E.db["general"]["bottomPanelSettings"]["height"] = 26
+    if E.db["general"]["bonusObjectivePosition"] then E.db["general"]["bonusObjectivePosition"] = "AUTO" end
+    if E.db["general"]["bottomPanelSettings"] then E.db["general"]["bottomPanelSettings"]["height"] = 26 end
     E.db["general"]["font"] = "Expressway"
     E.db["general"]["fontSize"] = 14
     E.db["general"]["fontStyle"] = "SHADOW"
     E.db["general"]["fonts"]["cooldown"]["outline"] = "SHADOW"
-    E.db["general"]["minimap"]["icons"]["mail"]["xOffset"] = -3
-    E.db["general"]["minimap"]["icons"]["mail"]["yOffset"] = -3
+    if E.db["general"]["minimap"]["icons"] and E.db["general"]["minimap"]["icons"]["mail"] then
+        E.db["general"]["minimap"]["icons"]["mail"]["xOffset"] = -3
+        E.db["general"]["minimap"]["icons"]["mail"]["yOffset"] = -3
+    end
     E.db["general"]["minimap"]["resetZoom"]["enable"] = true
     E.db["general"]["minimap"]["resetZoom"]["time"] = 10
     E.db["general"]["minimap"]["size"] = 220
-    E.db["general"]["objectiveFrameAutoHide"] = false
-    E.db["general"]["objectiveFrameHeight"] = 400
-    E.db["general"]["talkingHeadFrameScale"] = 1
-    E.db["general"]["totems"]["growthDirection"] = "HORIZONTAL"
-    E.db["general"]["totems"]["size"] = 50
-    E.db["general"]["totems"]["spacing"] = 8
+    if E.db["general"]["objectiveFrameAutoHide"] ~= nil then E.db["general"]["objectiveFrameAutoHide"] = false end
+    if E.db["general"]["objectiveFrameHeight"] then E.db["general"]["objectiveFrameHeight"] = 400 end
+    if E.db["general"]["talkingHeadFrameScale"] then E.db["general"]["talkingHeadFrameScale"] = 1 end
+    if E.db["general"]["totems"] then
+        E.db["general"]["totems"]["growthDirection"] = "HORIZONTAL"
+        E.db["general"]["totems"]["size"] = 50
+        E.db["general"]["totems"]["spacing"] = 8
+    end
+
+    -- =====================================================================
+    -- MOVERS
+    -- =====================================================================
     E.db["movers"]["AUI_MicrobarMover"] = "BOTTOMLEFT,ElvUIParent,BOTTOMLEFT,4,1"
     E.db["movers"]["AdditionalPowerMover"] = "BOTTOM,ElvUIParent,BOTTOM,-521,505"
-    E.db["movers"]["AddonCompartmentMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-227,-229"
+    if isRetail then E.db["movers"]["AddonCompartmentMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-227,-229" end
     E.db["movers"]["AlertFrameMover"] = "TOP,ElvUIParent,TOP,0,-20"
-    E.db["movers"]["AltPowerBarMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-995,-269"
+    if isRetail then E.db["movers"]["AltPowerBarMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-995,-269" end
     E.db["movers"]["ArenaHeaderMover"] = "BOTTOMRIGHT,ElvUIParent,RIGHT,-106,-166"
-    E.db["movers"]["AzeriteBarMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-246"
+    if isRetail then E.db["movers"]["AzeriteBarMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-246" end
     E.db["movers"]["BNETMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-781,-4"
-    E.db["movers"]["BelowMinimapContainerMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-51,-300"
-    E.db["movers"]["BossBannerMover"] = "TOP,ElvUIParent,TOP,0,-126"
-    E.db["movers"]["BossButton"] = "BOTTOM,ElvUIParent,BOTTOM,207,358"
+    if isRetail then E.db["movers"]["BelowMinimapContainerMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-51,-300" end
+    if isRetail then E.db["movers"]["BossBannerMover"] = "TOP,ElvUIParent,TOP,0,-126" end
+    if isRetail then E.db["movers"]["BossButton"] = "BOTTOM,ElvUIParent,BOTTOM,207,358" end
     E.db["movers"]["BossHeaderMover"] = "BOTTOMRIGHT,ElvUIParent,RIGHT,-106,-166"
     E.db["movers"]["BuffsMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-227,-3"
     E.db["movers"]["ClassBarMover"] = "BOTTOM,ElvUIParent,BOTTOM,-400,559"
@@ -482,7 +550,7 @@ local function InstallLayout()
     E.db["movers"]["DebuffsMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-227,-171"
     E.db["movers"]["DurabilityFrameMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,141,-4"
     E.db["movers"]["ElvAB_1"] = "BOTTOM,UIParent,BOTTOM,0,280"
-    E.db["movers"]["ElvAB_13"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,442"
+    if isRetail then E.db["movers"]["ElvAB_13"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,442" end
     E.db["movers"]["ElvAB_2"] = "BOTTOM,ElvUIParent,BOTTOM,351,280"
     E.db["movers"]["ElvAB_3"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,264"
     E.db["movers"]["ElvAB_4"] = "RIGHT,ElvUIParent,RIGHT,-4,0"
@@ -506,49 +574,57 @@ local function InstallLayout()
     E.db["movers"]["ElvUF_TargetTargetTargetMover"] = "BOTTOM,ElvUIParent,BOTTOM,446,432"
     E.db["movers"]["ElvUIBagMover"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,264"
     E.db["movers"]["ElvUIBankMover"] = "BOTTOMLEFT,UIParent,BOTTOMLEFT,4,266"
-    E.db["movers"]["EventToastMover"] = "TOP,ElvUIParent,TOP,0,-150"
+    if isRetail then E.db["movers"]["EventToastMover"] = "TOP,ElvUIParent,TOP,0,-150" end
     E.db["movers"]["ExperienceBarMover"] = "TOP,UIParent,TOP,0,0"
     E.db["movers"]["GMMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,251,-5"
-    E.db["movers"]["HonorBarMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-236"
+    if isRetail then E.db["movers"]["HonorBarMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-236" end
     E.db["movers"]["LeftChatMover"] = "BOTTOMLEFT,ElvUIParent,BOTTOMLEFT,4,28"
     E.db["movers"]["LootFrameMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,419,-187"
-    E.db["movers"]["LossControlMover"] = "TOP,UIParent,TOP,-409,-594"
+    if isRetail then E.db["movers"]["LossControlMover"] = "TOP,UIParent,TOP,-409,-594" end
     E.db["movers"]["MicrobarMover"] = "BOTTOMLEFT,ElvUIParent,BOTTOMLEFT,4,1"
     E.db["movers"]["MinimapMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-3"
     E.db["movers"]["MirrorTimer1Mover"] = "TOP,ElvUIParent,TOP,-1,-96"
     E.db["movers"]["ObjectiveFrameMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-163,-325"
     E.db["movers"]["PetAB"] = "BOTTOM,ElvUIParent,BOTTOM,0,247"
     E.db["movers"]["PlayerPowerBarMover"] = "BOTTOM,UIParent,BOTTOM,-400,505"
-    E.db["movers"]["PowerBarContainerMover"] = "TOP,ElvUIParent,TOP,0,-75"
-    E.db["movers"]["PrivateAurasMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-247,-229"
-    E.db["movers"]["PrivateRaidWarningMover"] = "TOP,RaidBossEmoteFrame,TOP,0,0"
-    E.db["movers"]["QueueStatusMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-4,-29"
-    E.db["movers"]["ReputationBarMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-226"
+    if isRetail then E.db["movers"]["PowerBarContainerMover"] = "TOP,ElvUIParent,TOP,0,-75" end
+    if isRetail then E.db["movers"]["PrivateAurasMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-247,-229" end
+    if isRetail then E.db["movers"]["PrivateRaidWarningMover"] = "TOP,RaidBossEmoteFrame,TOP,0,0" end
+    if isRetail then E.db["movers"]["QueueStatusMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-4,-29" end
+    if isRetail then E.db["movers"]["ReputationBarMover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-3,-226" end
     E.db["movers"]["RightChatMover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-4,28"
     E.db["movers"]["ShiftAB"] = "BOTTOM,ElvUIParent,BOTTOM,-152,358"
-    E.db["movers"]["SocialMenuMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,4,-187"
+    if isRetail then E.db["movers"]["SocialMenuMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,4,-187" end
     E.db["movers"]["TargetPowerBarMover"] = "BOTTOM,ElvUIParent,BOTTOM,400,504"
     E.db["movers"]["ThreatBarMover"] = "BOTTOM,UIParent,BOTTOM,487,58"
     E.db["movers"]["TooltipMover"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,287"
-    E.db["movers"]["TopCenterContainerMover"] = "TOP,ElvUIParent,TOP,0,-30"
-    E.db["movers"]["TorghastChoiceToggle"] = "BOTTOM,UIParent,BOTTOM,0,679"
+    if isRetail then E.db["movers"]["TopCenterContainerMover"] = "TOP,ElvUIParent,TOP,0,-30" end
+    if isRetail then E.db["movers"]["TorghastChoiceToggle"] = "BOTTOM,UIParent,BOTTOM,0,679" end
     E.db["movers"]["TotemTrackerMover"] = "BOTTOMLEFT,ElvUIParent,BOTTOMLEFT,491,4"
-    E.db["movers"]["VOICECHAT"] = "TOPLEFT,ElvUIParent,TOPLEFT,369,-210"
-    E.db["movers"]["VehicleLeaveButton"] = "BOTTOM,UIParent,BOTTOM,0,357"
-    E.db["movers"]["VehicleSeatMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,4,-4"
-    E.db["movers"]["WTChatBarMover"] = "BOTTOMLEFT,ElvUIParent,BOTTOMLEFT,4,264"
-    E.db["movers"]["WTCustomEmoteFrameMover"] = "BOTTOMLEFT,UIParent,BOTTOMLEFT,492,72"
-    E.db["movers"]["WTExitPhaseDivingButtonMover"] = "BOTTOM,ElvUIParent,BOTTOM,141,358"
-    E.db["movers"]["WTExtraItemsBar1Mover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-556,28"
-    E.db["movers"]["WTExtraItemsBar2Mover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-478,28"
-    E.db["movers"]["WTExtraItemsBar3Mover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-517,28"
-    E.db["movers"]["WTExtraItemsBar4Mover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-1044,-46"
-    E.db["movers"]["WTExtraItemsBar5Mover"] = "TOPRIGHT,UIParent,TOPRIGHT,-1044,-4"
-    E.db["movers"]["WTGameBarAnchor"] = "TOPLEFT,UIParent,TOPLEFT,682,-68"
-    E.db["movers"]["WTMinimapButtonBarAnchor"] = "TOPRIGHT,UIParent,TOPRIGHT,-4,-264"
-    E.db["movers"]["WTRaidMarkersBarAnchor"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,264"
-    E.db["movers"]["WTSwitchButtonBarMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-4,-245"
-    E.db["movers"]["ZoneAbility"] = "BOTTOM,ElvUIParent,BOTTOM,154,358"
+    if isRetail then E.db["movers"]["VOICECHAT"] = "TOPLEFT,ElvUIParent,TOPLEFT,369,-210" end
+    if isRetail then E.db["movers"]["VehicleLeaveButton"] = "BOTTOM,UIParent,BOTTOM,0,357" end
+    if isRetail then E.db["movers"]["VehicleSeatMover"] = "TOPLEFT,ElvUIParent,TOPLEFT,4,-4" end
+    if isRetail then E.db["movers"]["ZoneAbility"] = "BOTTOM,ElvUIParent,BOTTOM,154,358" end
+
+    -- WINDTOOLS MOVERS (Nur wenn WindTools aktiv ist)
+    if hasWindTools then
+        E.db["movers"]["WTChatBarMover"] = "BOTTOMLEFT,ElvUIParent,BOTTOMLEFT,4,264"
+        E.db["movers"]["WTCustomEmoteFrameMover"] = "BOTTOMLEFT,UIParent,BOTTOMLEFT,492,72"
+        E.db["movers"]["WTExitPhaseDivingButtonMover"] = "BOTTOM,ElvUIParent,BOTTOM,141,358"
+        E.db["movers"]["WTExtraItemsBar1Mover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-556,28"
+        E.db["movers"]["WTExtraItemsBar2Mover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-478,28"
+        E.db["movers"]["WTExtraItemsBar3Mover"] = "BOTTOMRIGHT,ElvUIParent,BOTTOMRIGHT,-517,28"
+        E.db["movers"]["WTExtraItemsBar4Mover"] = "TOPRIGHT,ElvUIParent,TOPRIGHT,-1044,-46"
+        E.db["movers"]["WTExtraItemsBar5Mover"] = "TOPRIGHT,UIParent,TOPRIGHT,-1044,-4"
+        E.db["movers"]["WTGameBarAnchor"] = "TOPLEFT,UIParent,TOPLEFT,682,-68"
+        E.db["movers"]["WTMinimapButtonBarAnchor"] = "TOPRIGHT,UIParent,TOPRIGHT,-4,-264"
+        E.db["movers"]["WTRaidMarkersBarAnchor"] = "BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-4,264"
+        E.db["movers"]["WTSwitchButtonBarMover"] = "TOPRIGHT,UIParent,TOPRIGHT,-4,-245"
+    end
+
+    -- =====================================================================
+    -- NAMEPLATES
+    -- =====================================================================
     E.db["nameplates"]["colors"]["selection"][0]["b"] = 0.25
     E.db["nameplates"]["colors"]["selection"][0]["g"] = 0.25
     E.db["nameplates"]["colors"]["selection"][0]["r"] = 0.78
@@ -572,6 +648,8 @@ local function InstallLayout()
     E.db["nameplates"]["threat"]["beingTankedByPet"] = false
     E.db["nameplates"]["threat"]["goodScale"] = 1.05
     E.db["nameplates"]["threat"]["indicator"] = true
+    
+    -- ENEMY NPC
     E.db["nameplates"]["units"]["ENEMY_NPC"]["buffs"]["countFontSize"] = 18
     E.db["nameplates"]["units"]["ENEMY_NPC"]["castbar"]["iconPosition"] = "LEFT"
     E.db["nameplates"]["units"]["ENEMY_NPC"]["castbar"]["showIcon"] = false
@@ -588,13 +666,17 @@ local function InstallLayout()
     E.db["nameplates"]["units"]["ENEMY_NPC"]["name"]["format"] = "[reactioncolor][name:abbrev:short] || [range]"
     E.db["nameplates"]["units"]["ENEMY_NPC"]["name"]["xOffset"] = -7
     E.db["nameplates"]["units"]["ENEMY_NPC"]["name"]["yOffset"] = -8
-    E.db["nameplates"]["units"]["ENEMY_NPC"]["smartAuraPosition"] = "FLUID_DEBUFFS_ON_BUFFS"
+    if E.db["nameplates"]["units"]["ENEMY_NPC"]["smartAuraPosition"] then
+        E.db["nameplates"]["units"]["ENEMY_NPC"]["smartAuraPosition"] = "FLUID_DEBUFFS_ON_BUFFS"
+    end
     E.db["nameplates"]["units"]["ENEMY_NPC"]["title"]["enable"] = true
     E.db["nameplates"]["units"]["ENEMY_NPC"]["title"]["fontSize"] = 12
     E.db["nameplates"]["units"]["ENEMY_NPC"]["title"]["format"] = "[threat]"
     E.db["nameplates"]["units"]["ENEMY_NPC"]["title"]["position"] = "TOPLEFT"
     E.db["nameplates"]["units"]["ENEMY_NPC"]["title"]["xOffset"] = -3
     E.db["nameplates"]["units"]["ENEMY_NPC"]["title"]["yOffset"] = -21
+    
+    -- ENEMY PLAYER
     E.db["nameplates"]["units"]["ENEMY_PLAYER"]["buffs"]["countFontSize"] = 18
     E.db["nameplates"]["units"]["ENEMY_PLAYER"]["health"]["height"] = 14
     E.db["nameplates"]["units"]["ENEMY_PLAYER"]["health"]["text"]["format"] = "[perhp<%]"
@@ -606,6 +688,8 @@ local function InstallLayout()
     E.db["nameplates"]["units"]["ENEMY_PLAYER"]["portrait"]["xOffset"] = 0
     E.db["nameplates"]["units"]["ENEMY_PLAYER"]["portrait"]["yOffset"] = 0
     E.db["nameplates"]["units"]["ENEMY_PLAYER"]["title"]["format"] = "[namecolor][guild:brackets]"
+    
+    -- FRIENDLY NPC
     E.db["nameplates"]["units"]["FRIENDLY_NPC"]["buffs"]["countFontSize"] = 18
     E.db["nameplates"]["units"]["FRIENDLY_NPC"]["castbar"]["smoothbars"] = true
     E.db["nameplates"]["units"]["FRIENDLY_NPC"]["health"]["height"] = 14
@@ -615,16 +699,24 @@ local function InstallLayout()
     E.db["nameplates"]["units"]["FRIENDLY_NPC"]["power"]["enable"] = true
     E.db["nameplates"]["units"]["FRIENDLY_NPC"]["title"]["enable"] = true
     E.db["nameplates"]["units"]["FRIENDLY_NPC"]["title"]["format"] = "[namecolor][npctitle:brackets]"
+    
+    -- FRIENDLY PLAYER
     E.db["nameplates"]["units"]["FRIENDLY_PLAYER"]["buffs"]["countFontSize"] = 18
     E.db["nameplates"]["units"]["FRIENDLY_PLAYER"]["health"]["height"] = 14
     E.db["nameplates"]["units"]["FRIENDLY_PLAYER"]["health"]["text"]["format"] = "[perhp<%]"
     E.db["nameplates"]["units"]["FRIENDLY_PLAYER"]["name"]["format"] = "[namecolor][name:title][realm:dash]"
     E.db["nameplates"]["units"]["FRIENDLY_PLAYER"]["pvpindicator"]["enable"] = true
     E.db["nameplates"]["units"]["FRIENDLY_PLAYER"]["title"]["format"] = "[namecolor][guild:brackets]"
+    
+    -- PLAYER PLATE
     E.db["nameplates"]["units"]["PLAYER"]["health"]["smoothbars"] = true
     E.db["nameplates"]["units"]["PLAYER"]["name"]["enable"] = true
     E.db["nameplates"]["units"]["PLAYER"]["visibility"]["showAlways"] = true
     E.db["nameplates"]["visibility"]["showAll"] = false
+
+    -- =====================================================================
+    -- TOOLTIPS
+    -- =====================================================================
     E.db["tooltip"]["alwaysShowRealm"] = true
     E.db["tooltip"]["font"] = "Expressway"
     E.db["tooltip"]["headerFont"] = "Expressway"
@@ -634,6 +726,10 @@ local function InstallLayout()
     E.db["tooltip"]["itemCount"]["stack"] = true
     E.db["tooltip"]["smallTextFontSize"] = 14
     E.db["tooltip"]["textFontSize"] = 14
+
+    -- =====================================================================
+    -- UNITFRAME COLORS & SETTINGS
+    -- =====================================================================
     E.db["unitframe"]["colors"]["auraBarBuff"]["b"] = 0.1
     E.db["unitframe"]["colors"]["auraBarBuff"]["g"] = 0.1
     E.db["unitframe"]["colors"]["auraBarBuff"]["r"] = 0.1
@@ -666,25 +762,41 @@ local function InstallLayout()
     E.db["unitframe"]["font"] = "Expressway"
     E.db["unitframe"]["fontOutline"] = "SHADOW"
     E.db["unitframe"]["fontSize"] = 14
-    E.db["unitframe"]["units"]["arena"]["colorOverride"] = "FORCE_OFF"
-    E.db["unitframe"]["units"]["arena"]["width"] = 220
-    E.db["unitframe"]["units"]["assist"]["colorOverride"] = "FORCE_OFF"
-    E.db["unitframe"]["units"]["boss"]["buffs"]["maxDuration"] = 300
-    E.db["unitframe"]["units"]["boss"]["buffs"]["sizeOverride"] = 27
-    E.db["unitframe"]["units"]["boss"]["buffs"]["yOffset"] = 16
-    E.db["unitframe"]["units"]["boss"]["castbar"]["width"] = 246
-    E.db["unitframe"]["units"]["boss"]["colorOverride"] = "FORCE_OFF"
-    E.db["unitframe"]["units"]["boss"]["debuffs"]["maxDuration"] = 300
-    E.db["unitframe"]["units"]["boss"]["debuffs"]["sizeOverride"] = 27
-    E.db["unitframe"]["units"]["boss"]["debuffs"]["yOffset"] = -16
-    E.db["unitframe"]["units"]["boss"]["health"]["text_format"] = "[healthcolor][eltruism:hpstatusnopc]"
-    E.db["unitframe"]["units"]["boss"]["height"] = 60
-    E.db["unitframe"]["units"]["boss"]["infoPanel"]["height"] = 17
-    E.db["unitframe"]["units"]["boss"]["width"] = 246
-    E.db["unitframe"]["units"]["focus"]["castbar"]["width"] = 90
-    E.db["unitframe"]["units"]["focus"]["height"] = 30
-    E.db["unitframe"]["units"]["focus"]["name"]["text_format"] = "[namecolor][name:eltruism:abbreviate] [eltruism:IconOutline:player] [eltruism:raidmarker]"
-    E.db["unitframe"]["units"]["focus"]["width"] = 90
+
+    -- ARENA & ASSIST
+    if E.db["unitframe"]["units"]["arena"] then
+        E.db["unitframe"]["units"]["arena"]["colorOverride"] = "FORCE_OFF"
+        E.db["unitframe"]["units"]["arena"]["width"] = 220
+    end
+    if E.db["unitframe"]["units"]["assist"] then
+        E.db["unitframe"]["units"]["assist"]["colorOverride"] = "FORCE_OFF"
+    end
+
+    -- BOSS
+    if E.db["unitframe"]["units"]["boss"] then
+        E.db["unitframe"]["units"]["boss"]["buffs"]["maxDuration"] = 300
+        E.db["unitframe"]["units"]["boss"]["buffs"]["sizeOverride"] = 27
+        E.db["unitframe"]["units"]["boss"]["buffs"]["yOffset"] = 16
+        E.db["unitframe"]["units"]["boss"]["castbar"]["width"] = 246
+        E.db["unitframe"]["units"]["boss"]["colorOverride"] = "FORCE_OFF"
+        E.db["unitframe"]["units"]["boss"]["debuffs"]["maxDuration"] = 300
+        E.db["unitframe"]["units"]["boss"]["debuffs"]["sizeOverride"] = 27
+        E.db["unitframe"]["units"]["boss"]["debuffs"]["yOffset"] = -16
+        E.db["unitframe"]["units"]["boss"]["health"]["text_format"] = "[healthcolor][eltruism:hpstatusnopc]"
+        E.db["unitframe"]["units"]["boss"]["height"] = 60
+        E.db["unitframe"]["units"]["boss"]["infoPanel"]["height"] = 17
+        E.db["unitframe"]["units"]["boss"]["width"] = 246
+    end
+
+    -- FOCUS
+    if E.db["unitframe"]["units"]["focus"] then
+        E.db["unitframe"]["units"]["focus"]["castbar"]["width"] = 90
+        E.db["unitframe"]["units"]["focus"]["height"] = 30
+        E.db["unitframe"]["units"]["focus"]["name"]["text_format"] = "[namecolor][name:eltruism:abbreviate] [eltruism:IconOutline:player] [eltruism:raidmarker]"
+        E.db["unitframe"]["units"]["focus"]["width"] = 90
+    end
+
+    -- PARTY
     E.db["unitframe"]["units"]["party"]["colorOverride"] = "FORCE_OFF"
     E.db["unitframe"]["units"]["party"]["customTexts"]["A-UI_Status"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["party"]["customTexts"]["A-UI_Status"]["enable"] = true
@@ -698,13 +810,19 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["party"]["height"] = 50
     E.db["unitframe"]["units"]["party"]["name"]["yOffset"] = 7
     E.db["unitframe"]["units"]["party"]["power"]["height"] = 13
-    E.db["unitframe"]["units"]["party"]["raidRoleIcons"]["scale"] = 1.8
+    if E.db["unitframe"]["units"]["party"]["raidRoleIcons"] then
+        E.db["unitframe"]["units"]["party"]["raidRoleIcons"]["scale"] = 1.8
+    end
     E.db["unitframe"]["units"]["party"]["rdebuffs"]["font"] = "Expressway"
-    E.db["unitframe"]["units"]["party"]["roleIcon"]["damager"] = false
-    E.db["unitframe"]["units"]["party"]["roleIcon"]["size"] = 19
-    E.db["unitframe"]["units"]["party"]["roleIcon"]["xOffset"] = -8
-    E.db["unitframe"]["units"]["party"]["roleIcon"]["yOffset"] = -10
+    if E.db["unitframe"]["units"]["party"]["roleIcon"] then
+        E.db["unitframe"]["units"]["party"]["roleIcon"]["damager"] = false
+        E.db["unitframe"]["units"]["party"]["roleIcon"]["size"] = 19
+        E.db["unitframe"]["units"]["party"]["roleIcon"]["xOffset"] = -8
+        E.db["unitframe"]["units"]["party"]["roleIcon"]["yOffset"] = -10
+    end
     E.db["unitframe"]["units"]["party"]["width"] = 220
+
+    -- PET
     E.db["unitframe"]["units"]["pet"]["castbar"]["height"] = 12
     E.db["unitframe"]["units"]["pet"]["castbar"]["iconSize"] = 32
     E.db["unitframe"]["units"]["pet"]["castbar"]["width"] = 220
@@ -714,24 +832,33 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["pet"]["height"] = 34
     E.db["unitframe"]["units"]["pet"]["infoPanel"]["height"] = 14
     E.db["unitframe"]["units"]["pet"]["width"] = 220
-    E.db["unitframe"]["units"]["player"]["CombatIcon"]["size"] = 32
-    E.db["unitframe"]["units"]["player"]["CombatIcon"]["texture"] = "Eltruism16"
-    E.db["unitframe"]["units"]["player"]["CombatIcon"]["xOffset"] = 8
-    E.db["unitframe"]["units"]["player"]["RestIcon"]["size"] = 26
+
+    -- PLAYER
+    if E.db["unitframe"]["units"]["player"]["CombatIcon"] then
+        E.db["unitframe"]["units"]["player"]["CombatIcon"]["size"] = 32
+        E.db["unitframe"]["units"]["player"]["CombatIcon"]["texture"] = "Eltruism16"
+        E.db["unitframe"]["units"]["player"]["CombatIcon"]["xOffset"] = 8
+    end
+    if E.db["unitframe"]["units"]["player"]["RestIcon"] then
+        E.db["unitframe"]["units"]["player"]["RestIcon"]["size"] = 26
+    end
     E.db["unitframe"]["units"]["player"]["aurabar"]["enable"] = false
     E.db["unitframe"]["units"]["player"]["buffs"]["attachTo"] = "FRAME"
     E.db["unitframe"]["units"]["player"]["castbar"]["insideInfoPanel"] = false
     E.db["unitframe"]["units"]["player"]["castbar"]["smoothbars"] = true
     E.db["unitframe"]["units"]["player"]["castbar"]["width"] = 220
-    E.db["unitframe"]["units"]["player"]["classAdditional"]["height"] = 55
-    E.db["unitframe"]["units"]["player"]["classAdditional"]["orientation"] = "VERTICAL"
-    E.db["unitframe"]["units"]["player"]["classAdditional"]["width"] = 20
+    if E.db["unitframe"]["units"]["player"]["classAdditional"] then
+        E.db["unitframe"]["units"]["player"]["classAdditional"]["height"] = 55
+        E.db["unitframe"]["units"]["player"]["classAdditional"]["orientation"] = "VERTICAL"
+        E.db["unitframe"]["units"]["player"]["classAdditional"]["width"] = 20
+    end
     E.db["unitframe"]["units"]["player"]["classbar"]["detachFromFrame"] = true
     E.db["unitframe"]["units"]["player"]["classbar"]["detachedWidth"] = 220
     E.db["unitframe"]["units"]["player"]["classbar"]["fill"] = "spaced"
     E.db["unitframe"]["units"]["player"]["classbar"]["height"] = 12
     E.db["unitframe"]["units"]["player"]["classbar"]["smoothbars"] = true
     E.db["unitframe"]["units"]["player"]["colorOverride"] = "FORCE_OFF"
+    
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"]["enable"] = true
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"]["font"] = "PT Sans Narrow"
@@ -741,6 +868,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"]["text_format"] = "[classcolor][curhp< || ][perhp<%]"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"]["xOffset"] = 2
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_HP"]["yOffset"] = -10
+    
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"]["enable"] = true
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"]["font"] = "PT Sans Narrow"
@@ -750,6 +878,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"]["text_format"] = "[factioncolor][level]"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"]["xOffset"] = 0
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Level"]["yOffset"] = 10
+    
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"]["enable"] = true
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"]["font"] = "PT Sans Narrow"
@@ -759,6 +888,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"]["text_format"] = "[classcolor][name][realm:dash:translit]"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"]["xOffset"] = 2
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Name"]["yOffset"] = 10
+    
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"]["attachTextTo"] = "Power"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"]["enable"] = true
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"]["font"] = "PT Sans Narrow"
@@ -768,6 +898,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"]["text_format"] = "||cFF007ACC[curpp< || ][perpp<%]||r"
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"]["xOffset"] = 2
     E.db["unitframe"]["units"]["player"]["customTexts"]["A-UI_Power"]["yOffset"] = 0
+    
     E.db["unitframe"]["units"]["player"]["debuffs"]["attachTo"] = "BUFFS"
     E.db["unitframe"]["units"]["player"]["disableMouseoverGlow"] = true
     E.db["unitframe"]["units"]["player"]["healPrediction"]["absorbStyle"] = "NORMAL"
@@ -789,13 +920,17 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["player"]["power"]["smoothbars"] = true
     E.db["unitframe"]["units"]["player"]["power"]["text_format"] = ""
     E.db["unitframe"]["units"]["player"]["power"]["xOffset"] = 2
-    E.db["unitframe"]["units"]["player"]["pvp"]["position"] = "TOP"
-    E.db["unitframe"]["units"]["player"]["pvpIcon"]["anchorPoint"] = "BOTTOMRIGHT"
-    E.db["unitframe"]["units"]["player"]["pvpIcon"]["enable"] = true
-    E.db["unitframe"]["units"]["player"]["pvpIcon"]["scale"] = 0.95
-    E.db["unitframe"]["units"]["player"]["pvpIcon"]["xOffset"] = 14
-    E.db["unitframe"]["units"]["player"]["pvpIcon"]["yOffset"] = -10
+    if E.db["unitframe"]["units"]["player"]["pvp"] then E.db["unitframe"]["units"]["player"]["pvp"]["position"] = "TOP" end
+    if E.db["unitframe"]["units"]["player"]["pvpIcon"] then
+        E.db["unitframe"]["units"]["player"]["pvpIcon"]["anchorPoint"] = "BOTTOMRIGHT"
+        E.db["unitframe"]["units"]["player"]["pvpIcon"]["enable"] = true
+        E.db["unitframe"]["units"]["player"]["pvpIcon"]["scale"] = 0.95
+        E.db["unitframe"]["units"]["player"]["pvpIcon"]["xOffset"] = 14
+        E.db["unitframe"]["units"]["player"]["pvpIcon"]["yOffset"] = -10
+    end
     E.db["unitframe"]["units"]["player"]["width"] = 220
+
+    -- RAID 1 (Group Frame)
     E.db["unitframe"]["units"]["raid1"]["colorOverride"] = "FORCE_OFF"
     E.db["unitframe"]["units"]["raid1"]["customTexts"]["A-UI_GrpNR"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["raid1"]["customTexts"]["A-UI_GrpNR"]["enable"] = true
@@ -817,27 +952,43 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["raid1"]["rdebuffs"]["size"] = 30
     E.db["unitframe"]["units"]["raid1"]["rdebuffs"]["xOffset"] = 30
     E.db["unitframe"]["units"]["raid1"]["rdebuffs"]["yOffset"] = 25
-    E.db["unitframe"]["units"]["raid1"]["readycheckIcon"]["size"] = 23
-    E.db["unitframe"]["units"]["raid1"]["resurrectIcon"]["attachTo"] = "BOTTOMRIGHT"
-    E.db["unitframe"]["units"]["raid1"]["roleIcon"]["attachTo"] = "InfoPanel"
-    E.db["unitframe"]["units"]["raid1"]["roleIcon"]["damager"] = false
-    E.db["unitframe"]["units"]["raid1"]["roleIcon"]["size"] = 18
-    E.db["unitframe"]["units"]["raid1"]["roleIcon"]["xOffset"] = 0
+    if E.db["unitframe"]["units"]["raid1"]["readycheckIcon"] then E.db["unitframe"]["units"]["raid1"]["readycheckIcon"]["size"] = 23 end
+    if E.db["unitframe"]["units"]["raid1"]["resurrectIcon"] then E.db["unitframe"]["units"]["raid1"]["resurrectIcon"]["attachTo"] = "BOTTOMRIGHT" end
+    if E.db["unitframe"]["units"]["raid1"]["roleIcon"] then
+        E.db["unitframe"]["units"]["raid1"]["roleIcon"]["attachTo"] = "InfoPanel"
+        E.db["unitframe"]["units"]["raid1"]["roleIcon"]["damager"] = false
+        E.db["unitframe"]["units"]["raid1"]["roleIcon"]["size"] = 18
+        E.db["unitframe"]["units"]["raid1"]["roleIcon"]["xOffset"] = 0
+    end
     E.db["unitframe"]["units"]["raid1"]["width"] = 90
+
+    -- RAID 2
     E.db["unitframe"]["units"]["raid2"]["colorOverride"] = "FORCE_OFF"
     E.db["unitframe"]["units"]["raid2"]["height"] = 30
     E.db["unitframe"]["units"]["raid2"]["rdebuffs"]["font"] = "Expressway"
-    E.db["unitframe"]["units"]["raid2"]["roleIcon"]["damager"] = false
-    E.db["unitframe"]["units"]["raid2"]["roleIcon"]["enable"] = true
+    if E.db["unitframe"]["units"]["raid2"]["roleIcon"] then
+        E.db["unitframe"]["units"]["raid2"]["roleIcon"]["damager"] = false
+        E.db["unitframe"]["units"]["raid2"]["roleIcon"]["enable"] = true
+    end
+
+    -- RAID 3
     E.db["unitframe"]["units"]["raid3"]["colorOverride"] = "FORCE_OFF"
     E.db["unitframe"]["units"]["raid3"]["customTexts"]["EltreumRaid3Name"]["enable"] = true
     E.db["unitframe"]["units"]["raid3"]["customTexts"]["EltreumRaid3Name"]["text_format"] = "[namecolor][name:eltruism:abbreviateshort]"
     E.db["unitframe"]["units"]["raid3"]["rdebuffs"]["font"] = "Expressway"
-    E.db["unitframe"]["units"]["tank"]["colorOverride"] = "FORCE_OFF"
-    E.db["unitframe"]["units"]["tank"]["name"]["text_format"] = "[namecolor][name:eltruism:abbreviate]"
-    E.db["unitframe"]["units"]["target"]["CombatIcon"]["size"] = 32
-    E.db["unitframe"]["units"]["target"]["CombatIcon"]["texture"] = "Eltruism16"
-    E.db["unitframe"]["units"]["target"]["CombatIcon"]["xOffset"] = -8
+
+    -- TANK
+    if E.db["unitframe"]["units"]["tank"] then
+        E.db["unitframe"]["units"]["tank"]["colorOverride"] = "FORCE_OFF"
+        E.db["unitframe"]["units"]["tank"]["name"]["text_format"] = "[namecolor][name:eltruism:abbreviate]"
+    end
+
+    -- TARGET
+    if E.db["unitframe"]["units"]["target"]["CombatIcon"] then
+        E.db["unitframe"]["units"]["target"]["CombatIcon"]["size"] = 32
+        E.db["unitframe"]["units"]["target"]["CombatIcon"]["texture"] = "Eltruism16"
+        E.db["unitframe"]["units"]["target"]["CombatIcon"]["xOffset"] = -8
+    end
     E.db["unitframe"]["units"]["target"]["aurabar"]["enable"] = false
     E.db["unitframe"]["units"]["target"]["auras"]["anchorPoint"] = "TOPLEFT"
     E.db["unitframe"]["units"]["target"]["auras"]["enable"] = false
@@ -853,6 +1004,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["castbar"]["smoothbars"] = true
     E.db["unitframe"]["units"]["target"]["castbar"]["width"] = 220
     E.db["unitframe"]["units"]["target"]["colorOverride"] = "FORCE_OFF"
+    
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"]["enable"] = true
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"]["font"] = "PT Sans Narrow"
@@ -862,6 +1014,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"]["text_format"] = "[classcolor][curhp< || ][perhp<%]"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"]["xOffset"] = -2
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_HP"]["yOffset"] = -10
+    
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Level"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Level"]["enable"] = true
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Level"]["font"] = "PT Sans Narrow"
@@ -871,6 +1024,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Level"]["text_format"] = "[difficulty][level]"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Level"]["xOffset"] = 2
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Level"]["yOffset"] = 10
+    
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"]["enable"] = true
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"]["font"] = "PT Sans Narrow"
@@ -880,6 +1034,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"]["text_format"] = "[classcolor][name:abbrev:medium]"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"]["xOffset"] = -2
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Name"]["yOffset"] = 10
+    
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"]["attachTextTo"] = "Power"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"]["enable"] = true
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"]["font"] = "PT Sans Narrow"
@@ -889,6 +1044,7 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"]["text_format"] = "||cFF007ACC[curpp< || ][perpp<%]||r"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"]["xOffset"] = -2
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Power"]["yOffset"] = 0
+    
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"]["attachTextTo"] = "Health"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"]["enable"] = true
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"]["font"] = "PT Sans Narrow"
@@ -898,13 +1054,14 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"]["text_format"] = "[threat]"
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"]["xOffset"] = 2
     E.db["unitframe"]["units"]["target"]["customTexts"]["A-UI_Threat"]["yOffset"] = -16
+    
     E.db["unitframe"]["units"]["target"]["debuffs"]["anchorPoint"] = "TOPLEFT"
     E.db["unitframe"]["units"]["target"]["debuffs"]["growthX"] = "RIGHT"
     E.db["unitframe"]["units"]["target"]["debuffs"]["maxDuration"] = 0
     E.db["unitframe"]["units"]["target"]["debuffs"]["perrow"] = 6
     E.db["unitframe"]["units"]["target"]["debuffs"]["priority"] = "Blacklist,Personal,NonPersonal"
     E.db["unitframe"]["units"]["target"]["debuffs"]["sizeOverride"] = 36
-    E.db["unitframe"]["units"]["target"]["debuffs"]["sourceText"]["class"] = false
+    if E.db["unitframe"]["units"]["target"]["debuffs"]["sourceText"] then E.db["unitframe"]["units"]["target"]["debuffs"]["sourceText"]["class"] = false end
     E.db["unitframe"]["units"]["target"]["disableMouseoverGlow"] = true
     E.db["unitframe"]["units"]["target"]["healPrediction"]["absorbStyle"] = "NORMAL"
     E.db["unitframe"]["units"]["target"]["health"]["smoothbars"] = true
@@ -923,53 +1080,67 @@ local function InstallLayout()
     E.db["unitframe"]["units"]["target"]["power"]["powerPrediction"] = true
     E.db["unitframe"]["units"]["target"]["power"]["smoothbars"] = true
     E.db["unitframe"]["units"]["target"]["power"]["text_format"] = ""
-    E.db["unitframe"]["units"]["target"]["privateAuras"]["duration"]["enable"] = true
-    E.db["unitframe"]["units"]["target"]["privateAuras"]["enable"] = true
-    E.db["unitframe"]["units"]["target"]["raidRoleIcons"]["yOffset"] = 0
-    E.db["unitframe"]["units"]["target"]["resurrectIcon"]["size"] = 34
+    if E.db["unitframe"]["units"]["target"]["privateAuras"] then
+        E.db["unitframe"]["units"]["target"]["privateAuras"]["duration"]["enable"] = true
+        E.db["unitframe"]["units"]["target"]["privateAuras"]["enable"] = true
+    end
+    if E.db["unitframe"]["units"]["target"]["raidRoleIcons"] then E.db["unitframe"]["units"]["target"]["raidRoleIcons"]["yOffset"] = 0 end
+    if E.db["unitframe"]["units"]["target"]["resurrectIcon"] then E.db["unitframe"]["units"]["target"]["resurrectIcon"]["size"] = 34 end
     E.db["unitframe"]["units"]["target"]["width"] = 220
+
+    -- TARGET TARGET & TARGET TARGET TARGET
     E.db["unitframe"]["units"]["targettarget"]["colorOverride"] = "FORCE_OFF"
     E.db["unitframe"]["units"]["targettarget"]["debuffs"]["enable"] = false
     E.db["unitframe"]["units"]["targettarget"]["disableMouseoverGlow"] = true
     E.db["unitframe"]["units"]["targettarget"]["health"]["smoothbars"] = true
     E.db["unitframe"]["units"]["targettarget"]["height"] = 30
     E.db["unitframe"]["units"]["targettarget"]["power"]["enable"] = false
-    E.db["unitframe"]["units"]["targettarget"]["raidicon"]["attachTo"] = "LEFT"
-    E.db["unitframe"]["units"]["targettarget"]["raidicon"]["enable"] = false
-    E.db["unitframe"]["units"]["targettarget"]["raidicon"]["xOffset"] = 2
-    E.db["unitframe"]["units"]["targettarget"]["raidicon"]["yOffset"] = 0
+    if E.db["unitframe"]["units"]["targettarget"]["raidicon"] then
+        E.db["unitframe"]["units"]["targettarget"]["raidicon"]["attachTo"] = "LEFT"
+        E.db["unitframe"]["units"]["targettarget"]["raidicon"]["enable"] = false
+        E.db["unitframe"]["units"]["targettarget"]["raidicon"]["xOffset"] = 2
+        E.db["unitframe"]["units"]["targettarget"]["raidicon"]["yOffset"] = 0
+    end
     E.db["unitframe"]["units"]["targettarget"]["threatStyle"] = "GLOW"
     E.db["unitframe"]["units"]["targettarget"]["width"] = 128
-    E.db["unitframe"]["units"]["targettargettarget"]["debuffs"]["enable"] = false
-    E.db["unitframe"]["units"]["targettargettarget"]["enable"] = true
-    E.db["unitframe"]["units"]["targettargettarget"]["health"]["smoothbars"] = true
-    E.db["unitframe"]["units"]["targettargettarget"]["height"] = 20
-    E.db["unitframe"]["units"]["targettargettarget"]["power"]["enable"] = false
-    E.db["unitframe"]["units"]["targettargettarget"]["width"] = 128
 
-    
+    if E.db["unitframe"]["units"]["targettargettarget"] then
+        E.db["unitframe"]["units"]["targettargettarget"]["debuffs"]["enable"] = false
+        E.db["unitframe"]["units"]["targettargettarget"]["enable"] = true
+        E.db["unitframe"]["units"]["targettargettarget"]["health"]["smoothbars"] = true
+        E.db["unitframe"]["units"]["targettargettarget"]["height"] = 20
+        E.db["unitframe"]["units"]["targettargettarget"]["power"]["enable"] = false
+        E.db["unitframe"]["units"]["targettargettarget"]["width"] = 128
+    end
+
     -- =====================================================================
     -- 3. SMARTE FALLBACKS (Korrektur, falls Plugins fehlen)
     -- =====================================================================
     if not hasEltruism then
-        if E.db.unitframe.units.boss then E.db.unitframe.units.boss.health.text_format = "[healthcolor][health:current-percent]" end
-        if E.db.unitframe.units.focus then E.db.unitframe.units.focus.name.text_format = "[namecolor][name:medium]" end
-        if E.db.unitframe.units.party.customTexts and E.db.unitframe.units.party.customTexts["A-UI_Status"] then
+        if E.db.unitframe.units.boss and E.db.unitframe.units.boss.health then 
+            E.db.unitframe.units.boss.health.text_format = "[healthcolor][health:current-percent]" 
+        end
+        if E.db.unitframe.units.focus and E.db.unitframe.units.focus.name then 
+            E.db.unitframe.units.focus.name.text_format = "[namecolor][name:medium]" 
+        end
+        if E.db.unitframe.units.party and E.db.unitframe.units.party.customTexts and E.db.unitframe.units.party.customTexts["A-UI_Status"] then
             E.db.unitframe.units.party.customTexts["A-UI_Status"].text_format = "[status]"
         end
-        if E.db.unitframe.units.raid3.customTexts and E.db.unitframe.units.raid3.customTexts["EltreumRaid3Name"] then
+        if E.db.unitframe.units.raid3 and E.db.unitframe.units.raid3.customTexts and E.db.unitframe.units.raid3.customTexts["EltreumRaid3Name"] then
             E.db.unitframe.units.raid3.customTexts["EltreumRaid3Name"] = nil
         end
-        if E.db.unitframe.units.tank then E.db.unitframe.units.tank.name.text_format = "[namecolor][name:medium]" end
+        if E.db.unitframe.units.tank and E.db.unitframe.units.tank.name then 
+            E.db.unitframe.units.tank.name.text_format = "[namecolor][name:medium]" 
+        end
     end
 
     -- 4. ElvUI zwingen, das neue Profil live zu updaten
     E:UpdateAll(true)
     
-    -- NEU: Setze den Installations-Marker, damit das Fenster auf diesem Profil nie wieder aufploppt!
+    -- Setze den Installations-Marker
     E.db.AUI.install_version = "1.0"
     
-    -- 5. AUTOMATISCH AUF DIE LETZTE SEITE (ENDSCREEN) BLÄTTERN
+    -- 5. Automatisch auf den Endscreen wechseln
     PI:SetPage(4)
 end
 
@@ -993,7 +1164,7 @@ local function Step3()
 end
 
 -- =====================================================================
--- SEITE 4: ENDSCREEN (Erfolg & Schließen)
+-- SEITE 4: ENDSCREEN
 -- =====================================================================
 local function Step4()
     PluginInstallFrame.SubTitle:Show()
@@ -1003,19 +1174,18 @@ local function Step4()
     PluginInstallFrame.Desc1:SetText(L["Your A-UI layout has been successfully configured!"])
     
     PluginInstallFrame.Desc2:Show()
-    PluginInstallFrame.Desc2:SetText(L["All supported plugins have been considered and your interface is now ready for Midnight."])
+    local readyText = isRetail and "All supported plugins have been considered and your interface is now ready for Midnight." or "All supported plugins have been considered and your interface is now ready for TBC Classic."
+    PluginInstallFrame.Desc2:SetText(readyText)
     
     PluginInstallFrame.Desc3:Show()
     PluginInstallFrame.Desc3:SetText(L["Have fun and good loot!"])
     
-    -- Wir aktivieren den Schließen-Button
     PluginInstallFrame.Option1:Show()
     PluginInstallFrame.Option1:SetText(L["Close"] or "Schließen")
     PluginInstallFrame.Option1:SetScript("OnClick", function()
         PluginInstallFrame:Hide()
-        ReloadUI() -- NEU: Der Reload darf erst beim Klicken passieren!
+        ReloadUI()
     end)
-    -- Hier stand fälschlicherweise vorher ein ReloadUI()!
     PluginInstallFrame.Option2:Hide()
 end
 
@@ -1023,9 +1193,8 @@ end
 -- INSTALLER REGISTRIEREN
 -- =====================================================================
 AUI.InstallerData = {
-    Title = "|cff00ffd2A-UI|r " .. L["Installation"],
+    Title = "|cff00ffd2A-UI|r " .. (L["Installation"] or "Installation"),
     Name = "A-UI",
-    -- tutorialImage habe ich vorerst deaktiviert, damit es keinen schwarzen Bildschirm erzwingt!
     Pages = {
         [1] = Step1,
         [2] = Step2,
@@ -1038,10 +1207,8 @@ AUI.InstallerData = {
     Step4 = Step4
 }
 
--- Funktion, um den Installer aufzurufen
 function AUI:RunInstaller()
     PI:Queue(AUI.InstallerData)
 end
 
--- Chat-Befehl zum Testen: /aui
 E:RegisterChatCommand("aui", function() AUI:RunInstaller() end)
